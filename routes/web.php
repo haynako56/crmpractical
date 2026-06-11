@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+    Route::redirect('dashboard', '/enquiries')->name('dashboard');
 
     Route::get('team', [\App\Http\Controllers\TeamController::class, 'index'])->name('team');
     Route::post('team', [\App\Http\Controllers\TeamController::class, 'store'])->name('team.store');
