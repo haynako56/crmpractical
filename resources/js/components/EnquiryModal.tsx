@@ -312,29 +312,41 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
             dep1, dep2, status,
         };
 
-        onEnquiryChange({ ...enquiry, ...payload, user_id: userId, assignedUser: targetUser });
+        const optimisticFollowUps = enquiry.followUps.map((followUp) => ({
+            ...followUp,
+            message: editFollowUps[followUp.id] ?? followUp.message,
+        }));
+        onEnquiryChange({ ...enquiry, ...payload, user_id: userId, assignedUser: targetUser, followUps: optimisticFollowUps });
         setIsEditing(false);
 
-        router.patch(`/enquiries/${enquiry.id}`, payload, {
-            preserveState: true,
-            preserveScroll: true,
-        });
+        const enquiryId = enquiry.id;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
 
-        enquiry.followUps.forEach((followUp) => {
-            const editedMessage = editFollowUps[followUp.id] ?? followUp.message;
-            const newFile       = followUpNewFiles[followUp.id] ?? null;
-            const removeFile    = followUpRemoveFile[followUp.id] ?? false;
-            const messageChanged = editedMessage !== followUp.message;
+        const followUpPatches = enquiry.followUps
+            .map((followUp) => {
+                const editedMessage  = editFollowUps[followUp.id] ?? followUp.message;
+                const newFile        = followUpNewFiles[followUp.id] ?? null;
+                const removeFile     = followUpRemoveFile[followUp.id] ?? false;
+                const messageChanged = editedMessage !== followUp.message;
 
-            if (!messageChanged && !newFile && !removeFile) return;
+                if (!messageChanged && !newFile && !removeFile) return null;
 
-            const formData = new FormData();
-            formData.append('message', editedMessage);
-            if (newFile) formData.append('file', newFile);
-            if (removeFile) formData.append('remove_file', '1');
+                const formData = new FormData();
+                formData.append('_method', 'PATCH');
+                formData.append('message', editedMessage);
+                if (newFile) formData.append('file', newFile);
+                if (removeFile) formData.append('remove_file', '1');
 
-            router.patch(`/follow-ups/${followUp.id}`, formData, {
-                forceFormData: true,
+                return fetch(`/follow-ups/${followUp.id}`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                    body: formData,
+                });
+            })
+            .filter(Boolean) as Promise<Response>[];
+
+        Promise.all(followUpPatches).finally(() => {
+            router.patch(`/enquiries/${enquiryId}`, payload, {
                 preserveState: true,
                 preserveScroll: true,
             });

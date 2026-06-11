@@ -1,4 +1,5 @@
 import { Head, usePage, router } from '@inertiajs/react';
+import type { Auth } from '@/types/auth';
 import { getUserColor } from '@/lib/user-colors';
 import { useState, useMemo, useRef } from 'react';
 import {
@@ -379,6 +380,8 @@ function KanbanColumn({ status, enquiries, onSelect }: { status: string; enquiri
 // ─── Main page ─────────────────────────────────────────────────────────────────
 export default function EnquiriesPage() {
     const { enquiries: serverEnquiries, users = [], flash } = usePage<{ enquiries: Enquiry[]; users: CrmUser[]; flash?: string }>().props;
+    const { auth } = usePage<{ auth: Auth }>().props;
+    const isSuperAdmin = auth.isSuperAdmin ?? false;
 
     // Optimistic overrides sit on top of server data. Cleared automatically when
     // Inertia refreshes props (the server becomes the source of truth again).
@@ -522,6 +525,15 @@ export default function EnquiriesPage() {
         });
     }
 
+    function handleDelete() {
+        if (!selectedEnquiry) return;
+        if (!confirm(`Delete ${selectedEnquiry.name}? This cannot be undone.`)) return;
+        router.delete(`/enquiries/${selectedEnquiry.id}`, {
+            preserveScroll: true,
+            onSuccess: () => setSelectedId(null),
+        });
+    }
+
     function openEdit() {
         if (!selectedEnquiry) return;
         const parsedDate = new Date(selectedEnquiry.date);
@@ -570,32 +582,48 @@ export default function EnquiriesPage() {
             dep1, dep2, status,
         };
 
-        // Optimistic update
-        updateEnquiry({ ...selectedEnquiry, ...payload, user_id: userId, assignedUser: targetUser });
+        // Optimistically update follow-up messages so they show immediately without waiting for server
+        const optimisticFollowUps = selectedEnquiry.followUps.map((followUp) => ({
+            ...followUp,
+            message: editFollowUps[followUp.id] ?? followUp.message,
+        }));
+        updateEnquiry({ ...selectedEnquiry, ...payload, user_id: userId, assignedUser: targetUser, followUps: optimisticFollowUps });
         setIsEditing(false);
 
-        router.patch(`/enquiries/${selectedEnquiry.id}`, payload, {
-            preserveState: true,
-            preserveScroll: true,
-        });
+        const enquiryId = selectedEnquiry.id;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
 
-        selectedEnquiry.followUps.forEach((followUp) => {
-            const editedMessage  = editFollowUps[followUp.id] ?? followUp.message;
-            const newFile        = followUpNewFiles[followUp.id] ?? null;
-            const removeFile     = followUpRemoveFile[followUp.id] ?? false;
-            const messageChanged = editedMessage !== followUp.message;
+        // Follow-up patches via fetch (won't cancel the Inertia request)
+        const followUpPatches = selectedEnquiry.followUps
+            .map((followUp) => {
+                const editedMessage  = editFollowUps[followUp.id] ?? followUp.message;
+                const newFile        = followUpNewFiles[followUp.id] ?? null;
+                const removeFile     = followUpRemoveFile[followUp.id] ?? false;
+                const messageChanged = editedMessage !== followUp.message;
 
-            if (!messageChanged && !newFile && !removeFile) return;
+                if (!messageChanged && !newFile && !removeFile) return null;
 
-            const formData = new FormData();
-            formData.append('message', editedMessage);
-            if (newFile) formData.append('file', newFile);
-            if (removeFile) formData.append('remove_file', '1');
+                const formData = new FormData();
+                formData.append('_method', 'PATCH');
+                formData.append('message', editedMessage);
+                if (newFile) formData.append('file', newFile);
+                if (removeFile) formData.append('remove_file', '1');
 
-            router.patch(`/follow-ups/${followUp.id}`, formData, {
-                forceFormData: true,
+                return fetch(`/follow-ups/${followUp.id}`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                    body: formData,
+                });
+            })
+            .filter(Boolean) as Promise<Response>[];
+
+        // Enquiry patch fires after follow-ups complete; on success, clear the override so
+        // fresh server data (with updated file info etc.) replaces the optimistic state.
+        Promise.all(followUpPatches).finally(() => {
+            router.patch(`/enquiries/${enquiryId}`, payload, {
                 preserveState: true,
                 preserveScroll: true,
+                onSuccess: () => setOverrides((prev) => { const next = new Map(prev); next.delete(enquiryId); return next; }),
             });
         });
     }
@@ -917,7 +945,7 @@ export default function EnquiriesPage() {
                                 {!isEditing && <StatusBadge status={selectedEnquiry.status} />}
                                 <button
                                     onClick={() => { setSelectedId(null); setIsEditing(false); }}
-                                    className="rounded-lg border border-gray-200 p-1.5 text-gray-400 transition hover:bg-gray-100"
+                                    className="rounded-lg border border-gray-200 p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 hover:cursor-pointer"
                                 >
                                     <X size={16} />
                                 </button>
@@ -1226,7 +1254,7 @@ export default function EnquiriesPage() {
                                         <select
                                             value={String(selectedEnquiry.user_id ?? '')}
                                             onChange={(event) => handleUserAssign(event.target.value)}
-                                            className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 focus:border-blue-700 focus:outline-none"
+                                            className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 focus:border-blue-700 focus:outline-none hover:cursor-pointer"
                                         >
                                             <option value="">— Unassigned —</option>
                                             {users.map((user) => <option key={user.id} value={String(user.id)}>{user.name}</option>)}
@@ -1241,7 +1269,7 @@ export default function EnquiriesPage() {
                                             <button
                                                 key={statusName}
                                                 onClick={() => handleStatusChange(statusName)}
-                                                className={`rounded-full border-2 px-3 py-1.5 text-xs font-medium transition hover:scale-105 ${colorConfig.bg} ${colorConfig.text} ${isActive ? 'ring-2 ring-blue-900 ring-offset-1' : 'border-transparent'}`}
+                                                className={`rounded-full border-2 px-3 py-1.5 text-xs font-medium transition hover:scale-105 hover:cursor-pointer ${colorConfig.bg} ${colorConfig.text} ${isActive ? 'ring-2 ring-blue-900 ring-offset-1' : 'border-transparent'}`}
                                             >
                                                 {statusName}
                                             </button>
@@ -1353,7 +1381,7 @@ export default function EnquiriesPage() {
                                     <div className="mt-2 flex items-center gap-2">
                                         <button
                                             onClick={() => noteFileInputRef.current?.click()}
-                                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50 hover:cursor-pointer"
                                         >
                                             <Paperclip size={13} /> Attach file
                                         </button>
@@ -1366,7 +1394,7 @@ export default function EnquiriesPage() {
                                         <button
                                             onClick={handleSaveNote}
                                             disabled={isSubmittingNote || (!newNoteText.trim() && !pendingNoteFile)}
-                                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-900 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-blue-800 disabled:opacity-40"
+                                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-900 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-blue-800 disabled:opacity-40 hover:cursor-pointer disabled:hover:bg-blue-900"
                                         >
                                             <Send size={14} /> {isSubmittingNote ? 'Saving…' : 'Save update'}
                                         </button>
@@ -1384,13 +1412,13 @@ export default function EnquiriesPage() {
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => setIsEditing(false)}
-                                            className="rounded-lg border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                                            className="rounded-lg border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:cursor-pointer"
                                         >
                                             Cancel
                                         </button>
                                         <button
                                             onClick={handleSaveEdit}
-                                            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-blue-800"
+                                            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-blue-800 hover:cursor-pointer"
                                         >
                                             <Check size={14} /> Save changes
                                         </button>
@@ -1398,19 +1426,24 @@ export default function EnquiriesPage() {
                                 </>
                             ) : (
                                 <>
-                                    <button className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50">
-                                        <Trash2 size={14} /> Delete
-                                    </button>
+                                    {isSuperAdmin && (
+                                        <button
+                                            onClick={handleDelete}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 hover:cursor-pointer"
+                                        >
+                                            <Trash2 size={14} /> Delete
+                                        </button>
+                                    )}
                                     <div className="flex gap-2">
                                         <button
                                             onClick={openEdit}
-                                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:cursor-pointer"
                                         >
                                             <Pencil size={14} /> Edit
                                         </button>
                                         <button
                                             onClick={() => setSelectedId(null)}
-                                            className="rounded-lg border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                                            className="rounded-lg border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:cursor-pointer"
                                         >
                                             Close
                                         </button>
@@ -1442,7 +1475,7 @@ export default function EnquiriesPage() {
                             </div>
                             <button
                                 onClick={() => setIsAddingNew(false)}
-                                className="rounded-lg border border-gray-200 p-1.5 text-gray-400 transition hover:bg-gray-100"
+                                className="rounded-lg border border-gray-200 p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 hover:cursor-pointer"
                             >
                                 <X size={16} />
                             </button>

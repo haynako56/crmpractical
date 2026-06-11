@@ -23,6 +23,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('enquiries', [\App\Http\Controllers\EnquiryController::class, 'index'])->name('enquiries');
     Route::post('enquiries', [\App\Http\Controllers\EnquiryController::class, 'store'])->name('enquiries.store');
     Route::patch('enquiries/{enquiry}', [\App\Http\Controllers\EnquiryController::class, 'update'])->name('enquiries.update');
+    Route::delete('enquiries/{enquiry}', [\App\Http\Controllers\EnquiryController::class, 'destroy'])->name('enquiries.destroy');
     Route::post('enquiries/import', [\App\Http\Controllers\EnquiryController::class, 'import'])->name('enquiries.import');
 
     Route::post('enquiries/{enquiry}/follow-ups', [\App\Http\Controllers\FollowUpController::class, 'store'])->name('follow-ups.store');

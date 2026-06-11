@@ -17,18 +17,9 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        $user = User::factory()->create([
-            'name' => 'Admin User',
-            'email' => 'developer@meshmedia.com.au',
-            'password' => bcrypt('password'),
-            'email_verified_at' => now(),
-        ]);
-
         $this->call([
             RoleSeeder::class,
         ]);
-
-        $user->assignRole('Super Admin');
 
     }
 }

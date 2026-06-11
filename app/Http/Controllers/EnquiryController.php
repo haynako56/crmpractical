@@ -127,6 +127,27 @@ class EnquiryController extends Controller
         return redirect()->back()->with('flash', 'Enquiry updated successfully');
     }
 
+    public function destroy(Enquiry $enquiry)
+    {
+        abort_if(! auth()->user()?->hasRole('Super Admin'), 403);
+
+        foreach ($enquiry->followUps as $followUp) {
+            if ($followUp->file_path) {
+                \Illuminate\Support\Facades\Storage::disk('local')->delete($followUp->file_path);
+            }
+        }
+
+        foreach ($enquiry->files ?? [] as $filePath) {
+            \Illuminate\Support\Facades\Storage::disk('local')->delete($filePath);
+        }
+
+        $enquiry->delete();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Enquiry deleted.']);
+
+        return redirect()->back();
+    }
+
     public function import(Request $request, EnquiryImportService $importService)
     {
         $request->validate([
