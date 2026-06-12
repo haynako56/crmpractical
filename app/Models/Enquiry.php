@@ -44,6 +44,7 @@ class Enquiry extends Model
         'first_contact_timestamp' => 'datetime',
         'files'                   => 'array',
         'join_email_list'         => 'boolean',
+        'user_id'                 => 'integer',
     ];
 
     public function assignedUser(): BelongsTo

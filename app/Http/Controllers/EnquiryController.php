@@ -89,7 +89,7 @@ class EnquiryController extends Controller
             'date'    => ['required', 'date'],
             'type'    => ['required', 'string', 'max:100'],
             'rep'     => ['nullable', 'string', 'max:100'],
-            'user_id' => ['nullable', 'exists:users,id'],
+            'user_id' => ['nullable', 'integer', 'exists:users,id'],
             'source'  => ['required', 'string', 'max:100'],
             'lead'    => ['required', 'string', 'max:100'],
             'notes'   => ['nullable', 'string'],
@@ -130,7 +130,7 @@ class EnquiryController extends Controller
         ];
 
         if ($isSuperAdmin) {
-            $rules['user_id'] = ['sometimes', 'nullable', 'exists:users,id'];
+            $rules['user_id'] = ['sometimes', 'nullable', 'integer', 'exists:users,id'];
         }
 
         $enquiry->update($request->validate($rules));
