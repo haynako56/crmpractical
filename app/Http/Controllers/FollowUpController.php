@@ -10,7 +10,13 @@ use Inertia\Inertia;
 
 class FollowUpController extends Controller
 {
-    private function canEdit(int $enquiryUserId): bool
+    private function denyAccess(): \Illuminate\Http\RedirectResponse
+    {
+        Inertia::flash('toast', ['type' => 'error', 'message' => 'You are not allowed to perform this action.']);
+        return redirect()->back();
+    }
+
+    private function canEdit(?int $enquiryUserId): bool
     {
         return auth()->user()?->hasRole('Super Admin')
             || auth()->user()?->id === $enquiryUserId;
@@ -18,7 +24,9 @@ class FollowUpController extends Controller
 
     public function store(Request $request, Enquiry $enquiry)
     {
-        abort_if(! $this->canEdit($enquiry->user_id), 403);
+        if (! $this->canEdit($enquiry->user_id)) {
+            return $this->denyAccess();
+        }
 
         $request->validate([
             'date'    => ['required', 'date'],
@@ -55,7 +63,9 @@ class FollowUpController extends Controller
 
     public function update(Request $request, FollowUp $followUp)
     {
-        abort_if(! $this->canEdit($followUp->enquiry->user_id), 403);
+        if (! $this->canEdit($followUp->enquiry->user_id)) {
+            return $this->denyAccess();
+        }
 
         $request->validate([
             'message'     => ['required', 'string', 'max:5000'],
@@ -93,7 +103,9 @@ class FollowUpController extends Controller
 
     public function destroy(FollowUp $followUp)
     {
-        abort_if(! $this->canEdit($followUp->enquiry->user_id), 403);
+        if (! $this->canEdit($followUp->enquiry->user_id)) {
+            return $this->denyAccess();
+        }
 
         if ($followUp->file_path) {
             Storage::disk('local')->delete($followUp->file_path);

@@ -108,7 +108,10 @@ class EnquiryController extends Controller
     public function update(Request $request, Enquiry $enquiry)
     {
         $isSuperAdmin = auth()->user()?->hasRole('Super Admin');
-        abort_if(! $isSuperAdmin && auth()->user()?->id !== $enquiry->user_id, 403);
+        if (! $isSuperAdmin && auth()->user()?->id !== $enquiry->user_id) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'You are not allowed to edit this enquiry.']);
+            return redirect()->back();
+        }
 
         $previousUserId = $enquiry->user_id;
 
@@ -144,7 +147,10 @@ class EnquiryController extends Controller
 
     public function destroy(Enquiry $enquiry)
     {
-        abort_if(! auth()->user()?->hasRole('Super Admin'), 403);
+        if (! auth()->user()?->hasRole('Super Admin')) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Only Super Admins can delete enquiries.']);
+            return redirect()->back();
+        }
 
         foreach ($enquiry->followUps as $followUp) {
             if ($followUp->file_path) {
@@ -165,7 +171,10 @@ class EnquiryController extends Controller
 
     public function import(Request $request, EnquiryImportService $importService)
     {
-        abort_if(! auth()->user()?->hasRole('Super Admin'), 403);
+        if (! auth()->user()?->hasRole('Super Admin')) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Only Super Admins can import enquiries.']);
+            return redirect()->back();
+        }
 
         $request->validate([
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
