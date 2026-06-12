@@ -379,7 +379,7 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                         {!isEditing && <StatusBadge status={enquiry.status} />}
                         <button
                             onClick={() => { onClose(); setIsEditing(false); }}
-                            className="rounded-lg border border-gray-200 p-1.5 text-gray-400 transition hover:bg-gray-100"
+                            className="rounded-lg border border-gray-200 p-1.5 text-gray-400 transition hover:bg-gray-100 hover:cursor-pointer hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
                         >
                             <X size={16} />
                         </button>
@@ -691,7 +691,7 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                                         <button
                                             key={statusName}
                                             onClick={() => handleStatusChange(statusName)}
-                                            className={`rounded-full border-2 px-3 py-1.5 text-xs font-medium transition hover:scale-105 ${cfg.bg} ${cfg.text} ${isActive ? 'ring-2 ring-blue-900 ring-offset-1' : 'border-transparent'}`}
+                                            className={`rounded-full border-2 px-3 py-1.5 text-xs font-medium transition hover:scale-105 hover:cursor-pointer ${cfg.bg} ${cfg.text} ${isActive ? 'ring-2 ring-blue-900 ring-offset-1' : 'border-transparent'}`}
                                         >
                                             {statusName}
                                         </button>
@@ -732,7 +732,7 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                                                 )}
                                                 <button
                                                     onClick={() => deleteEnquiryFile(fileIndex)}
-                                                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-gray-200 text-gray-400 transition hover:border-red-300 hover:text-red-600"
+                                                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-gray-200 text-gray-400 transition hover:border-red-300 hover:text-red-600 hover:cursor-pointer"
                                                     title="Remove"
                                                 >
                                                     <X size={13} />
@@ -797,7 +797,7 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                                 <div className="mt-2 flex items-center gap-2">
                                     <button
                                         onClick={() => noteFileInputRef.current?.click()}
-                                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50 hover:cursor-pointer hover:text-gray-800"
                                     >
                                         <Paperclip size={13} /> Attach file
                                     </button>
@@ -810,7 +810,7 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                                     <button
                                         onClick={handleSaveNote}
                                         disabled={isSubmittingNote || (!newNoteText.trim() && !pendingNoteFile)}
-                                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-900 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-blue-800 disabled:opacity-40"
+                                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-900 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-blue-800 disabled:opacity-40 hover:cursor-pointer disabled:hover:cursor-not-allowed"
                                     >
                                         <Send size={14} /> {isSubmittingNote ? 'Saving…' : 'Save update'}
                                     </button>
@@ -828,13 +828,13 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => setIsEditing(false)}
-                                    className="rounded-lg border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                                    className="rounded-lg border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleSaveEdit}
-                                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-blue-800"
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-blue-800 hover:cursor-pointer"
                                 >
                                     <Check size={14} /> Save changes
                                 </button>
@@ -846,13 +846,13 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                             <div className="flex gap-2">
                                 <button
                                     onClick={openEditMode}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:cursor-pointer"
                                 >
                                     <Pencil size={14} /> Edit
                                 </button>
                                 <button
                                     onClick={onClose}
-                                    className="rounded-lg border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                                    className="rounded-lg border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:cursor-pointer"
                                 >
                                     Close
                                 </button>
