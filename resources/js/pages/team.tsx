@@ -380,9 +380,11 @@ const PAGE_SIZE = 10;
 function UnassignedSection({
     enquiries,
     users,
+    isSuperAdmin,
 }: {
     enquiries: UnassignedEnquiry[];
     users: TeamUser[];
+    isSuperAdmin: boolean;
 }) {
     const [search, setSearch] = useState('');
     const [page, setPage]     = useState(1);
@@ -458,7 +460,7 @@ function UnassignedSection({
                                 <th className="hidden px-4 py-3 md:table-cell">Location</th>
                                 <th className="w-28 px-4 py-3">Status</th>
                                 <th className="hidden w-24 px-4 py-3 sm:table-cell">Date</th>
-                                <th className="w-36 px-4 py-3">Assign to</th>
+                                {isSuperAdmin && <th className="w-36 px-4 py-3">Assign to</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -491,18 +493,20 @@ function UnassignedSection({
                                             {formatDate(enquiry.date)}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3">
-                                        <select
-                                            defaultValue=""
-                                            onChange={(event) => handleAssign(enquiry.id, event.target.value)}
-                                            className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-700 focus:border-blue-600 focus:outline-none"
-                                        >
-                                            <option value="" disabled>— Assign —</option>
-                                            {users.filter((user) => user.status === 'active').map((user) => (
-                                                <option key={user.id} value={user.id}>{user.name}</option>
-                                            ))}
-                                        </select>
-                                    </td>
+                                    {isSuperAdmin && (
+                                        <td className="px-4 py-3">
+                                            <select
+                                                defaultValue=""
+                                                onChange={(event) => handleAssign(enquiry.id, event.target.value)}
+                                                className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-700 focus:border-blue-600 focus:outline-none"
+                                            >
+                                                <option value="" disabled>— Assign —</option>
+                                                {users.filter((user) => user.status === 'active').map((user) => (
+                                                    <option key={user.id} value={user.id}>{user.name}</option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
@@ -664,7 +668,7 @@ export default function TeamPage() {
                     <div className="flex-1 border-t border-gray-200" />
                 </div>
 
-                <UnassignedSection enquiries={unassigned} users={users} />
+                <UnassignedSection enquiries={unassigned} users={users} isSuperAdmin={isSuperAdmin} />
             </div>
 
             {/* Modal */}

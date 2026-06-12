@@ -679,6 +679,7 @@ export default function EnquiriesPage() {
     const totalPages         = Math.max(1, Math.ceil(filteredEnquiries.length / PAGE_SIZE));
     const paginatedEnquiries = filteredEnquiries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
     const selectedEnquiry    = enquiries.find((enquiry) => enquiry.id === selectedId) ?? null;
+    const canEdit            = isSuperAdmin || auth.user.id === selectedEnquiry?.user_id;
 
     function resetToFirstPage() {
         setCurrentPage(1);
@@ -704,29 +705,33 @@ export default function EnquiriesPage() {
                         <p className="mt-0.5 text-sm text-gray-500">All enquiries · 2026</p>
                     </div>
                     <div className="flex gap-2">
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".csv"
-                            className="hidden"
-                            onChange={handleFileSelected}
-                        />
-                        <button
-                            onClick={handleImportButtonClick}
-                            disabled={isImporting}
-                            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-50"
-                        >
-                            <Upload size={15} /> {isImporting ? 'Importing…' : 'Import CSV'}
-                        </button>
+                        {isSuperAdmin && (
+                            <>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept=".csv"
+                                    className="hidden"
+                                    onChange={handleFileSelected}
+                                />
+                                <button
+                                    onClick={handleImportButtonClick}
+                                    disabled={isImporting}
+                                    className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-50 hover:cursor-pointer"
+                                >
+                                    <Upload size={15} /> {isImporting ? 'Importing…' : 'Import CSV'}
+                                </button>
+                            </>
+                        )}
                         <button
                             onClick={() => buildAndDownloadCSV(enquiries)}
-                            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 hover:cursor-pointer"
                         >
                             <Download size={15} /> Export CSV
                         </button>
                         <button
                             onClick={openAddNew}
-                            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-800"
+                            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-800 hover:cursor-pointer"
                         >
                             <Plus size={15} /> New enquiry
                         </button>
@@ -1017,19 +1022,21 @@ export default function EnquiriesPage() {
                                         ))}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">Sales rep</label>
-                                    <select
-                                        value={editDraft.user_id ?? ''}
-                                        onChange={(event) => setEditDraft((prev) => ({ ...prev, user_id: event.target.value }))}
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-700 focus:outline-none"
-                                    >
-                                        <option value="">— Unassigned —</option>
-                                        {users.map((user) => (
-                                            <option key={user.id} value={String(user.id)}>{user.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                                {isSuperAdmin && (
+                                    <div>
+                                        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">Sales rep</label>
+                                        <select
+                                            value={editDraft.user_id ?? ''}
+                                            onChange={(event) => setEditDraft((prev) => ({ ...prev, user_id: event.target.value }))}
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-700 focus:outline-none"
+                                        >
+                                            <option value="">— Unassigned —</option>
+                                            {users.map((user) => (
+                                                <option key={user.id} value={String(user.id)}>{user.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
                             {/* Row: source + lead */}
                             <div className="grid grid-cols-2 gap-4">
@@ -1251,14 +1258,20 @@ export default function EnquiriesPage() {
                                     <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Status &amp; assignment</p>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs text-gray-500">Assigned to:</span>
-                                        <select
-                                            value={String(selectedEnquiry.user_id ?? '')}
-                                            onChange={(event) => handleUserAssign(event.target.value)}
-                                            className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 focus:border-blue-700 focus:outline-none hover:cursor-pointer"
-                                        >
-                                            <option value="">— Unassigned —</option>
-                                            {users.map((user) => <option key={user.id} value={String(user.id)}>{user.name}</option>)}
-                                        </select>
+                                        {isSuperAdmin ? (
+                                            <select
+                                                value={String(selectedEnquiry.user_id ?? '')}
+                                                onChange={(event) => handleUserAssign(event.target.value)}
+                                                className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 focus:border-blue-700 focus:outline-none hover:cursor-pointer"
+                                            >
+                                                <option value="">— Unassigned —</option>
+                                                {users.map((user) => <option key={user.id} value={String(user.id)}>{user.name}</option>)}
+                                            </select>
+                                        ) : (
+                                            <span className="text-xs font-medium text-gray-700">
+                                                {selectedEnquiry.assignedUser?.name ?? selectedEnquiry.rep ?? '—'}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
@@ -1353,7 +1366,7 @@ export default function EnquiriesPage() {
                             </div>
 
                             {/* Add update */}
-                            <div>
+                            {canEdit && <div>
                                 <p className="mb-2 border-b border-gray-100 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Add update</p>
                                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                                     <textarea
@@ -1400,7 +1413,7 @@ export default function EnquiriesPage() {
                                         </button>
                                     </div>
                                 </div>
-                            </div>
+                            </div>}
                         </div>
                         )} {/* end isEditing ternary */}
 
@@ -1435,12 +1448,14 @@ export default function EnquiriesPage() {
                                         </button>
                                     )}
                                     <div className="flex gap-2">
-                                        <button
-                                            onClick={openEdit}
-                                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:cursor-pointer"
-                                        >
-                                            <Pencil size={14} /> Edit
-                                        </button>
+                                        {canEdit && (
+                                            <button
+                                                onClick={openEdit}
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:cursor-pointer"
+                                            >
+                                                <Pencil size={14} /> Edit
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => setSelectedId(null)}
                                             className="rounded-lg border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:cursor-pointer"
@@ -1561,17 +1576,19 @@ export default function EnquiriesPage() {
                                         {TYPE_OPTIONS.map((option) => <option key={option}>{option}</option>)}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">Sales rep</label>
-                                    <select
-                                        value={newForm.user_id ?? ''}
-                                        onChange={(event) => setNewForm((prev) => ({ ...prev, user_id: event.target.value }))}
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-700 focus:outline-none"
-                                    >
-                                        <option value="">— Unassigned —</option>
-                                        {users.map((user) => <option key={user.id} value={String(user.id)}>{user.name}</option>)}
-                                    </select>
-                                </div>
+                                {isSuperAdmin && (
+                                    <div>
+                                        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">Sales rep</label>
+                                        <select
+                                            value={newForm.user_id ?? ''}
+                                            onChange={(event) => setNewForm((prev) => ({ ...prev, user_id: event.target.value }))}
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-700 focus:outline-none"
+                                        >
+                                            <option value="">— Unassigned —</option>
+                                            {users.map((user) => <option key={user.id} value={String(user.id)}>{user.name}</option>)}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Source + Lead */}

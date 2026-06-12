@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Enquiry;
 use App\Models\User;
+use App\Notifications\EnquiryAssigned;
 use App\Services\EnquiryImportService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -106,7 +107,12 @@ class EnquiryController extends Controller
 
     public function update(Request $request, Enquiry $enquiry)
     {
-        $enquiry->update($request->validate([
+        $isSuperAdmin = auth()->user()?->hasRole('Super Admin');
+        abort_if(! $isSuperAdmin && auth()->user()?->id !== $enquiry->user_id, 403);
+
+        $previousUserId = $enquiry->user_id;
+
+        $rules = [
             'name'    => ['sometimes', 'string', 'max:255'],
             'phone'   => ['sometimes', 'nullable', 'string', 'max:50'],
             'email'   => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -114,7 +120,6 @@ class EnquiryController extends Controller
             'date'    => ['sometimes', 'nullable', 'date'],
             'type'    => ['sometimes', 'nullable', 'string', 'max:100'],
             'rep'     => ['sometimes', 'nullable', 'string', 'max:100'],
-            'user_id' => ['sometimes', 'nullable', 'exists:users,id'],
             'source'  => ['sometimes', 'nullable', 'string', 'max:100'],
             'lead'    => ['sometimes', 'nullable', 'string', 'max:100'],
             'notes'   => ['sometimes', 'nullable', 'string'],
@@ -122,7 +127,17 @@ class EnquiryController extends Controller
             'dep1'    => ['sometimes', 'in:YES,NO'],
             'dep2'    => ['sometimes', 'in:YES,NO'],
             'status'  => ['sometimes', 'in:New,Contacted,Meeting,1st Deposit,2nd Deposit,Closed,Lost'],
-        ]));
+        ];
+
+        if ($isSuperAdmin) {
+            $rules['user_id'] = ['sometimes', 'nullable', 'exists:users,id'];
+        }
+
+        $enquiry->update($request->validate($rules));
+
+        if ($isSuperAdmin && $enquiry->user_id && $enquiry->user_id !== $previousUserId) {
+            $enquiry->assignedUser?->notify(new EnquiryAssigned($enquiry));
+        }
 
         return redirect()->back()->with('flash', 'Enquiry updated successfully');
     }
@@ -150,6 +165,8 @@ class EnquiryController extends Controller
 
     public function import(Request $request, EnquiryImportService $importService)
     {
+        abort_if(! auth()->user()?->hasRole('Super Admin'), 403);
+
         $request->validate([
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
         ]);

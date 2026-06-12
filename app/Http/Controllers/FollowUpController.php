@@ -10,8 +10,16 @@ use Inertia\Inertia;
 
 class FollowUpController extends Controller
 {
+    private function canEdit(int $enquiryUserId): bool
+    {
+        return auth()->user()?->hasRole('Super Admin')
+            || auth()->user()?->id === $enquiryUserId;
+    }
+
     public function store(Request $request, Enquiry $enquiry)
     {
+        abort_if(! $this->canEdit($enquiry->user_id), 403);
+
         $request->validate([
             'date'    => ['required', 'date'],
             'message' => ['required', 'string', 'max:5000'],
@@ -47,6 +55,8 @@ class FollowUpController extends Controller
 
     public function update(Request $request, FollowUp $followUp)
     {
+        abort_if(! $this->canEdit($followUp->enquiry->user_id), 403);
+
         $request->validate([
             'message'     => ['required', 'string', 'max:5000'],
             'file'        => ['nullable', 'file', 'max:10240'],
@@ -83,6 +93,8 @@ class FollowUpController extends Controller
 
     public function destroy(FollowUp $followUp)
     {
+        abort_if(! $this->canEdit($followUp->enquiry->user_id), 403);
+
         if ($followUp->file_path) {
             Storage::disk('local')->delete($followUp->file_path);
         }

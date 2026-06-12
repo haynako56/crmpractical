@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
+import type { Auth } from '@/types/auth';
 import { getUserColor } from '@/lib/user-colors';
 import {
     X, Phone, Mail, BellRing, Clock,
@@ -181,6 +182,10 @@ interface EnquiryModalProps {
 }
 
 export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange }: EnquiryModalProps) {
+    const { auth } = usePage<{ auth: Auth }>().props;
+    const isSuperAdmin = auth.isSuperAdmin ?? false;
+    const canEdit      = isSuperAdmin || auth.user.id === enquiry.user_id;
+
     const [isEditing, setIsEditing]             = useState(false);
     const [editDraft, setEditDraft]             = useState<Record<string, string>>({});
     const [editFollowUps, setEditFollowUps]         = useState<Record<number, string>>({});
@@ -447,19 +452,21 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                                     ))}
                                 </select>
                             </div>
-                            <div>
-                                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">Sales rep</label>
-                                <select
-                                    value={editDraft.user_id ?? ''}
-                                    onChange={(event) => setEditDraft((prev) => ({ ...prev, user_id: event.target.value }))}
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-700 focus:outline-none"
-                                >
-                                    <option value="">— Unassigned —</option>
-                                    {users.map((user) => (
-                                        <option key={user.id} value={String(user.id)}>{user.name}</option>
-                                    ))}
-                                </select>
-                            </div>
+                            {isSuperAdmin && (
+                                <div>
+                                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">Sales rep</label>
+                                    <select
+                                        value={editDraft.user_id ?? ''}
+                                        onChange={(event) => setEditDraft((prev) => ({ ...prev, user_id: event.target.value }))}
+                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-700 focus:outline-none"
+                                    >
+                                        <option value="">— Unassigned —</option>
+                                        {users.map((user) => (
+                                            <option key={user.id} value={String(user.id)}>{user.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             {[
@@ -673,14 +680,20 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Status &amp; assignment</p>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs text-gray-500">Assigned to:</span>
-                                    <select
-                                        value={String(enquiry.user_id ?? '')}
-                                        onChange={(event) => handleUserAssign(event.target.value)}
-                                        className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 focus:border-blue-700 focus:outline-none"
-                                    >
-                                        <option value="">— Unassigned —</option>
-                                        {users.map((user) => <option key={user.id} value={String(user.id)}>{user.name}</option>)}
-                                    </select>
+                                    {isSuperAdmin ? (
+                                        <select
+                                            value={String(enquiry.user_id ?? '')}
+                                            onChange={(event) => handleUserAssign(event.target.value)}
+                                            className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 focus:border-blue-700 focus:outline-none"
+                                        >
+                                            <option value="">— Unassigned —</option>
+                                            {users.map((user) => <option key={user.id} value={String(user.id)}>{user.name}</option>)}
+                                        </select>
+                                    ) : (
+                                        <span className="text-xs font-medium text-gray-700">
+                                            {enquiry.assignedUser?.name ?? enquiry.rep ?? '—'}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                             <div className="flex flex-wrap gap-2">
@@ -772,7 +785,7 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                         </div>
 
                         {/* Add update */}
-                        <div>
+                        {canEdit && <div>
                             <p className="mb-2 border-b border-gray-100 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Add update</p>
                             <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                                 <textarea
@@ -816,7 +829,7 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                                     </button>
                                 </div>
                             </div>
-                        </div>
+                        </div>}
                     </div>
                 )}
 
@@ -844,12 +857,14 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                         <>
                             <div />
                             <div className="flex gap-2">
-                                <button
-                                    onClick={openEditMode}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:cursor-pointer"
-                                >
-                                    <Pencil size={14} /> Edit
-                                </button>
+                                {canEdit && (
+                                    <button
+                                        onClick={openEditMode}
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:cursor-pointer"
+                                    >
+                                        <Pencil size={14} /> Edit
+                                    </button>
+                                )}
                                 <button
                                     onClick={onClose}
                                     className="rounded-lg border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:cursor-pointer"
