@@ -136,9 +136,7 @@ class TeamController extends Controller
             default                   => null,
         };
 
-        if ($role) {
-            $user->syncRoles([$role]);
-        }
+        $user->syncRoles($role ? [$role] : []);
     }
 
     private function requireSuperAdmin(): void
