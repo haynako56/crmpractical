@@ -12,6 +12,11 @@ class TeamController extends Controller
 {
     public function index()
     {
+        if (auth()->user()?->hasRole('Sales')) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'You do not have access to the team page.']);
+            return redirect()->route('enquiries');
+        }
+
         $users = User::withCount([
             'enquiries as total_count',
             'enquiries as active_count'   => fn ($q) => $q->whereNotIn('status', ['Closed', 'Lost']),
@@ -63,7 +68,7 @@ class TeamController extends Controller
             'color'    => ['nullable', 'integer', 'min:0', 'max:7'],
         ]);
 
-        User::create([
+        $user = User::create([
             'name'     => $validated['name'],
             'email'    => $validated['email'],
             'password' => Hash::make($validated['password']),
@@ -72,6 +77,8 @@ class TeamController extends Controller
             'status'   => $validated['status'] ?? 'active',
             'color'    => $validated['color'] ?? 0,
         ]);
+
+        $this->syncRoleFromTitle($user, $validated['title'] ?? null);
 
         return redirect()->route('team')->with('flash', $validated['name'] . ' added to team');
     }
@@ -105,6 +112,8 @@ class TeamController extends Controller
 
         $user->update($data);
 
+        $this->syncRoleFromTitle($user, $validated['title'] ?? null);
+
         return redirect()->route('team')->with('flash', $user->name . ' updated');
     }
 
@@ -116,6 +125,20 @@ class TeamController extends Controller
         $user->delete();
 
         return redirect()->route('team')->with('flash', $user->name . ' removed from team');
+    }
+
+    private function syncRoleFromTitle(User $user, ?string $title): void
+    {
+        $role = match ($title) {
+            'Super Admin'             => 'Super Admin',
+            'Senior Sales Consultant' => 'Admin',
+            'Sales Consultant'        => 'Sales',
+            default                   => null,
+        };
+
+        if ($role) {
+            $user->syncRoles([$role]);
+        }
     }
 
     private function requireSuperAdmin(): void

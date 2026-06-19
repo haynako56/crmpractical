@@ -50,7 +50,7 @@ type ModalState = { mode: 'add' } | { mode: 'edit'; user: TeamUser } | null;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const TITLE_OPTIONS = ['Sales Consultant', 'Senior Sales Consultant'];
+const TITLE_OPTIONS = ['Sales Consultant', 'Senior Sales Consultant', 'Super Admin'];
 
 const STATUS_COLORS: Record<string, string> = {
     New:           'bg-blue-50 text-blue-800',

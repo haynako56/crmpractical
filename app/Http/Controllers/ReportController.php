@@ -15,7 +15,15 @@ class ReportController extends Controller
 
     public function reports(Request $request)
     {
-        $availableYears = Enquiry::selectRaw('YEAR(date) as year')
+        $isSales = auth()->user()?->hasRole('Sales');
+        $userId  = auth()->id();
+
+        $base = Enquiry::query();
+        if ($isSales) {
+            $base->where('user_id', $userId);
+        }
+
+        $availableYears = (clone $base)->selectRaw('YEAR(date) as year')
             ->whereNotNull('date')
             ->groupBy('year')
             ->orderByDesc('year')
@@ -24,9 +32,10 @@ class ReportController extends Controller
 
         $year = (int) $request->get('year', $availableYears[0] ?? date('Y'));
 
+        $yearBase = (clone $base)->whereYear('date', $year);
+
         // Monthly enquiry counts (all 12 months, filling 0 where no data)
-        $monthlyCounts = Enquiry::selectRaw('MONTH(date) as month, COUNT(*) as count')
-            ->whereYear('date', $year)
+        $monthlyCounts = (clone $yearBase)->selectRaw('MONTH(date) as month, COUNT(*) as count')
             ->groupBy('month')
             ->pluck('count', 'month');
 
@@ -36,8 +45,7 @@ class ReportController extends Controller
         ])->values();
 
         // Type breakdown
-        $typeData = Enquiry::selectRaw('type, COUNT(*) as count')
-            ->whereYear('date', $year)
+        $typeData = (clone $yearBase)->selectRaw('type, COUNT(*) as count')
             ->whereNotNull('type')
             ->where('type', '!=', '')
             ->groupBy('type')
@@ -46,8 +54,7 @@ class ReportController extends Controller
             ->map(fn ($row) => ['type' => $row->type, 'count' => (int) $row->count]);
 
         // Lead source breakdown (using `source` column)
-        $sourceData = Enquiry::selectRaw('source, COUNT(*) as count')
-            ->whereYear('date', $year)
+        $sourceData = (clone $yearBase)->selectRaw('source, COUNT(*) as count')
             ->whereNotNull('source')
             ->where('source', '!=', '')
             ->groupBy('source')
@@ -57,25 +64,27 @@ class ReportController extends Controller
 
         // Rep performance (users with enquiry counts for this year)
         $repData = User::withCount([
-            'enquiries as count' => fn ($q) => $q->whereYear('date', $year),
+            'enquiries as count' => fn ($q) => $q->whereYear('date', $year)->when($isSales, fn ($q) => $q->where('enquiries.user_id', $userId)),
         ])->orderBy('name')->get()->map(fn (User $user) => [
             'name'  => $user->name,
             'count' => (int) $user->count,
             'color' => $user->color ?? 0,
         ]);
 
-        // Unassigned count for the year
-        $unassignedCount = Enquiry::whereYear('date', $year)->whereNull('user_id')->count();
-        if ($unassignedCount > 0) {
-            $repData->push(['name' => 'Unassigned', 'count' => $unassignedCount, 'color' => -1]);
+        // Unassigned count for the year (Sales sees none, they only see assigned)
+        if (! $isSales) {
+            $unassignedCount = (clone $yearBase)->whereNull('user_id')->count();
+            if ($unassignedCount > 0) {
+                $repData->push(['name' => 'Unassigned', 'count' => $unassignedCount, 'color' => -1]);
+            }
         }
 
         // Year totals for summary stats
         $totals = [
-            'total'    => Enquiry::whereYear('date', $year)->count(),
-            'meetings' => Enquiry::whereYear('date', $year)->where('status', 'Meeting')->count(),
-            'deposits' => Enquiry::whereYear('date', $year)->whereIn('status', ['1st Deposit', '2nd Deposit'])->count(),
-            'lost'     => Enquiry::whereYear('date', $year)->where('status', 'Lost')->count(),
+            'total'    => (clone $yearBase)->count(),
+            'meetings' => (clone $yearBase)->where('status', 'Meeting')->count(),
+            'deposits' => (clone $yearBase)->whereIn('status', ['1st Deposit', '2nd Deposit'])->count(),
+            'lost'     => (clone $yearBase)->where('status', 'Lost')->count(),
         ];
 
         return Inertia::render('reports', [
@@ -91,8 +100,16 @@ class ReportController extends Controller
 
     public function statusReport(Request $request)
     {
+        $isSales = auth()->user()?->hasRole('Sales');
+        $userId  = auth()->id();
+
+        $roleBase = Enquiry::query();
+        if ($isSales) {
+            $roleBase->where('user_id', $userId);
+        }
+
         // Build list of available year-month combos
-        $availableMonths = Enquiry::selectRaw('YEAR(date) as yr, MONTH(date) as mo')
+        $availableMonths = (clone $roleBase)->selectRaw('YEAR(date) as yr, MONTH(date) as mo')
             ->whereNotNull('date')
             ->groupBy('yr', 'mo')
             ->orderByDesc('yr')
@@ -107,7 +124,7 @@ class ReportController extends Controller
         $selectedMonth = $request->get('month', 'all');
 
         // Base query filtered by selected month
-        $baseQuery = Enquiry::query();
+        $baseQuery = clone $roleBase;
         if ($selectedMonth !== 'all' && preg_match('/^\d{4}-\d{2}$/', $selectedMonth)) {
             [$yr, $mo] = explode('-', $selectedMonth);
             $baseQuery->whereYear('date', $yr)->whereMonth('date', $mo);
@@ -129,7 +146,7 @@ class ReportController extends Controller
         ])->values();
 
         // Monthly status flow — always all time, grouped by year-month
-        $flowRaw = Enquiry::selectRaw('YEAR(date) as yr, MONTH(date) as mo, status, COUNT(*) as count')
+        $flowRaw = (clone $roleBase)->selectRaw('YEAR(date) as yr, MONTH(date) as mo, status, COUNT(*) as count')
             ->whereNotNull('date')
             ->groupBy('yr', 'mo', 'status')
             ->orderBy('yr')
@@ -150,11 +167,11 @@ class ReportController extends Controller
 
         // Overall totals
         $totals = [
-            'total'    => Enquiry::count(),
-            'active'   => Enquiry::whereNotIn('status', ['Closed', 'Lost'])->count(),
-            'closed'   => Enquiry::where('status', 'Closed')->count(),
-            'lost'     => Enquiry::where('status', 'Lost')->count(),
-            'deposits' => Enquiry::whereIn('status', ['1st Deposit', '2nd Deposit'])->count(),
+            'total'    => (clone $roleBase)->count(),
+            'active'   => (clone $roleBase)->whereNotIn('status', ['Closed', 'Lost'])->count(),
+            'closed'   => (clone $roleBase)->where('status', 'Closed')->count(),
+            'lost'     => (clone $roleBase)->where('status', 'Lost')->count(),
+            'deposits' => (clone $roleBase)->whereIn('status', ['1st Deposit', '2nd Deposit'])->count(),
         ];
 
         return Inertia::render('status-report', [

@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
 
+Route::get('enquiry-assignments/{token}/confirm', [\App\Http\Controllers\EnquiryAssignmentController::class, 'confirm'])->name('enquiry-assignments.confirm');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::redirect('dashboard', '/enquiries')->name('dashboard');
 
@@ -34,6 +36,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('enquiries/{enquiry}/files', [\App\Http\Controllers\EnquiryFileController::class, 'store'])->name('enquiry-files.store');
     Route::delete('enquiries/{enquiry}/files/{index}', [\App\Http\Controllers\EnquiryFileController::class, 'destroy'])->name('enquiry-files.destroy');
     Route::get('enquiries/{enquiry}/files/{index}/download', [\App\Http\Controllers\EnquiryFileController::class, 'download'])->name('enquiry-files.download');
+
+    Route::get('files', [\App\Http\Controllers\FileController::class, 'index'])->name('files');
 
     Route::get('cf7-sync', [ApiSettingController::class, 'edit'])->name('cf7-sync.edit');
     Route::put('cf7-sync', [ApiSettingController::class, 'update'])->name('cf7-sync.update');

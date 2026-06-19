@@ -16,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
         $schedule->command('enquiries:sync-cf7')->hourly();
+
+        $schedule->command('assignments:send-reminders')->hourly();
+        $schedule->command('enquiries:send-no-response-alerts')->dailyAt('09:00');
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);

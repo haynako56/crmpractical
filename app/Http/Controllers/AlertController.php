@@ -13,12 +13,16 @@ class AlertController extends Controller
 
     public function index()
     {
-        // Load every non-terminal enquiry with its user and follow-ups
-        $active = Enquiry::whereNotIn('status', self::TERMINAL)
+        $activeQuery = Enquiry::whereNotIn('status', self::TERMINAL)
             ->whereNotNull('first_contact_timestamp')
-            ->with(['assignedUser', 'followUps'])
-            ->orderBy('first_contact_timestamp')
-            ->get();
+            ->with(['assignedUser', 'followUps.user'])
+            ->orderBy('first_contact_timestamp');
+
+        if (auth()->user()?->hasRole('Sales')) {
+            $activeQuery->where('user_id', auth()->id());
+        }
+
+        $active = $activeQuery->get();
 
         $now       = now();
         $threshold4h  = $now->copy()->subHours(4);
@@ -59,7 +63,7 @@ class AlertController extends Controller
                 'urgent'  => $urgent->count(),
                 'warning' => $warning->count(),
                 'ok'      => $ok->count(),
-                'total'   => Enquiry::count(),
+                'total'   => $urgent->count() + $warning->count() + $ok->count(),
             ],
             'users' => $users,
         ]);
@@ -115,6 +119,7 @@ class AlertController extends Controller
                 'file_name' => $fu->file_name,
                 'file_size' => $fu->file_size,
                 'file_mime' => $fu->file_mime,
+                'user_name' => $fu->user?->name,
             ]),
             'elapsed'               => $this->fmtElapsed($now->diffInSeconds($ts, false)),
             'hasNotes'              => $enquiry->followUps->isNotEmpty() || ! empty($enquiry->fu),

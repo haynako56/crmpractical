@@ -10,21 +10,28 @@ class DepositController extends Controller
 {
     public function index()
     {
-        $with = ['assignedUser', 'followUps'];
+        $with    = ['assignedUser', 'followUps.user'];
+        $isSales = auth()->user()?->hasRole('Sales');
+        $userId  = auth()->id();
 
-        $dep1 = Enquiry::where('dep1', 'YES')
+        $base = Enquiry::query();
+        if ($isSales) {
+            $base->where('user_id', $userId);
+        }
+
+        $dep1 = (clone $base)->where('dep1', 'YES')
             ->with($with)->orderByDesc('date')->orderByDesc('id')
             ->get()->map(fn (Enquiry $e) => $this->row($e));
 
-        $dep2 = Enquiry::where('dep2', 'YES')
+        $dep2 = (clone $base)->where('dep2', 'YES')
             ->with($with)->orderByDesc('date')->orderByDesc('id')
             ->get()->map(fn (Enquiry $e) => $this->row($e));
 
-        $pipeline = Enquiry::where('status', 'Meeting')
+        $pipeline = (clone $base)->where('status', 'Meeting')
             ->with($with)->orderByDesc('date')->orderByDesc('id')
             ->get()->map(fn (Enquiry $e) => $this->row($e));
 
-        $closed = Enquiry::where('status', 'Closed')
+        $closed = (clone $base)->where('status', 'Closed')
             ->with($with)->orderByDesc('date')->orderByDesc('id')
             ->get()->map(fn (Enquiry $e) => $this->row($e));
 
@@ -49,7 +56,7 @@ class DepositController extends Controller
                 'dep2Count' => $dep2->count(),
                 'pipeline'  => $pipeline->count(),
                 'closed'    => $closed->count(),
-                'total'     => Enquiry::count(),
+                'total'     => (clone $base)->count(),
             ],
         ]);
     }
@@ -102,6 +109,7 @@ class DepositController extends Controller
                 'file_name' => $fu->file_name,
                 'file_size' => $fu->file_size,
                 'file_mime' => $fu->file_mime,
+                'user_name' => $fu->user?->name,
             ]),
         ];
     }

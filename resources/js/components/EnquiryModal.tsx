@@ -27,6 +27,7 @@ export interface FollowUp {
     file_name: string | null;
     file_size: number | null;
     file_mime: string | null;
+    user_name: string | null;
 }
 
 export interface FullEnquiry {
@@ -184,7 +185,8 @@ interface EnquiryModalProps {
 export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange }: EnquiryModalProps) {
     const { auth } = usePage<{ auth: Auth }>().props;
     const isSuperAdmin = auth.isSuperAdmin ?? false;
-    const canEdit      = isSuperAdmin || auth.user.id === enquiry.user_id;
+    const isAdmin      = auth.isAdmin ?? false;
+    const canEdit      = isSuperAdmin || isAdmin || auth.user.id === enquiry.user_id;
 
     const [isEditing, setIsEditing]             = useState(false);
     const [editDraft, setEditDraft]             = useState<Record<string, string>>({});
@@ -452,7 +454,7 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                                     ))}
                                 </select>
                             </div>
-                            {isSuperAdmin && (
+                            {(isSuperAdmin || isAdmin) && (
                                 <div>
                                     <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">Sales rep</label>
                                     <select
@@ -497,7 +499,7 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                         {enquiry.followUps.length > 0 && (
                             <div>
                                 <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                                    Follow-up history ({enquiry.followUps.length})
+                                    Notes Update ({enquiry.followUps.length})
                                 </label>
                                 <div className="space-y-2">
                                     {enquiry.followUps.map((followUp) => {
@@ -506,7 +508,7 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                                         const hasExisting = !!followUp.file_name && !removing && !newFile;
                                         return (
                                         <div key={followUp.id} className="rounded-lg border border-gray-200 bg-gray-50 p-2">
-                                            <p className="mb-1 text-[11px] font-semibold text-gray-400">{formatDate(followUp.date)}</p>
+                                            <p className="mb-1 text-[11px] font-semibold text-gray-400">{followUp.user_name ?? formatDate(followUp.date)}</p>
                                             <textarea
                                                 value={editFollowUps[followUp.id] ?? followUp.message}
                                                 onChange={(event) => setEditFollowUps((prev) => ({ ...prev, [followUp.id]: event.target.value }))}
@@ -625,14 +627,14 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                         {/* Follow-up history */}
                         <div>
                             <p className="mb-2 border-b border-gray-100 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                                Follow-up history ({enquiry.followUps.length})
+                                Notes Update ({enquiry.followUps.length})
                             </p>
                             {enquiry.followUps.length > 0 ? (
                                 <div className="space-y-2">
                                     {enquiry.followUps.map((followUp) => (
                                         <div key={followUp.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
                                             <div className="mb-0.5 flex items-center justify-between">
-                                                <p className="text-[11px] font-semibold text-gray-400">{formatDate(followUp.date)}</p>
+                                                <p className="text-[11px] font-semibold text-gray-400">{followUp.user_name ?? formatDate(followUp.date)}</p>
                                                 <button
                                                     onClick={() => deleteFollowUp(followUp.id)}
                                                     className="text-gray-300 transition hover:text-red-500"
@@ -680,7 +682,7 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
                                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Status &amp; assignment</p>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs text-gray-500">Assigned to:</span>
-                                    {isSuperAdmin ? (
+                                    {(isSuperAdmin || isAdmin) ? (
                                         <select
                                             value={String(enquiry.user_id ?? '')}
                                             onChange={(event) => handleUserAssign(event.target.value)}
@@ -786,7 +788,7 @@ export default function EnquiryModal({ enquiry, users, onClose, onEnquiryChange 
 
                         {/* Add update */}
                         {canEdit && <div>
-                            <p className="mb-2 border-b border-gray-100 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Add update</p>
+                            <p className="mb-2 border-b border-gray-100 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Note Update</p>
                             <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                                 <textarea
                                     value={newNoteText}

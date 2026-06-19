@@ -24,12 +24,17 @@ class HandleInertiaRequests extends Middleware
      */
     private function alertCount(): int
     {
-        return Enquiry::whereNotIn('status', ['1st Deposit', '2nd Deposit', 'Closed', 'Lost'])
+        $query = Enquiry::whereNotIn('status', ['1st Deposit', '2nd Deposit', 'Closed', 'Lost'])
             ->whereNotNull('first_contact_timestamp')
             ->where('first_contact_timestamp', '<=', now()->subHours(4))
             ->whereDoesntHave('followUps')
-            ->where(fn ($q) => $q->whereNull('fu')->orWhere('fu', ''))
-            ->count();
+            ->where(fn ($q) => $q->whereNull('fu')->orWhere('fu', ''));
+
+        if (auth()->user()?->hasRole('Sales')) {
+            $query->where('user_id', auth()->id());
+        }
+
+        return $query->count();
     }
 
     public function version(Request $request): ?string
@@ -52,6 +57,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user'         => $request->user(),
                 'isSuperAdmin' => $request->user()?->hasRole('Super Admin') ?? false,
+                'isAdmin'      => $request->user()?->hasRole('Admin') ?? false,
             ],
             'alertCount'  => $request->user() ? $this->alertCount() : 0,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',

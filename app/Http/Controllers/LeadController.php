@@ -13,27 +13,35 @@ class LeadController extends Controller
 
     public function index()
     {
-        $now = now();
+        $now    = now();
+        $isSales = auth()->user()?->hasRole('Sales');
+        $userId  = auth()->id();
 
         // ── Stats ────────────────────────────────────────────────────────────
         $noFollowupBase = Enquiry::whereNotIn('status', self::TERMINAL)
             ->whereDoesntHave('followUps')
             ->where(fn ($q) => $q->whereNull('fu')->orWhere('fu', ''));
 
+        $baseQuery = Enquiry::query();
+        if ($isSales) {
+            $noFollowupBase->where('user_id', $userId);
+            $baseQuery->where('user_id', $userId);
+        }
+
         $stats = [
-            'total'        => Enquiry::count(),
-            'newThisMonth' => Enquiry::where('status', 'New')
+            'total'        => (clone $baseQuery)->count(),
+            'newThisMonth' => (clone $baseQuery)->where('status', 'New')
                 ->whereYear('date', $now->year)
                 ->whereMonth('date', $now->month)
                 ->count(),
-            'hot'          => Enquiry::where('status', 'Meeting')->count(),
+            'hot'          => (clone $baseQuery)->where('status', 'Meeting')->count(),
             'needFollowup' => (clone $noFollowupBase)->count(),
-            'lost'         => Enquiry::where('status', 'Lost')->count(),
+            'lost'         => (clone $baseQuery)->where('status', 'Lost')->count(),
             'thisMonthLabel' => $now->format('F Y'),
         ];
 
         // ── Lead source breakdown ─────────────────────────────────────────────
-        $sourceTotals = Enquiry::selectRaw('source, COUNT(*) as count')
+        $sourceTotals = (clone $baseQuery)->selectRaw('source, COUNT(*) as count')
             ->whereNotNull('source')
             ->where('source', '!=', '')
             ->groupBy('source')
@@ -46,7 +54,7 @@ class LeadController extends Controller
 
         // ── Active leads needing follow-up ────────────────────────────────────
         $needFollowup = (clone $noFollowupBase)
-            ->with(['assignedUser', 'followUps'])
+            ->with(['assignedUser', 'followUps.user'])
             ->orderByDesc('date')
             ->orderByDesc('id')
             ->limit(20)
@@ -54,7 +62,7 @@ class LeadController extends Controller
             ->map(fn (Enquiry $enquiry) => $this->row($enquiry));
 
         // ── Recent new leads ─────────────────────────────────────────────────
-        $recentLeads = Enquiry::with(['assignedUser', 'followUps'])
+        $recentLeads = (clone $baseQuery)->with(['assignedUser', 'followUps.user'])
             ->orderByDesc('date')
             ->orderByDesc('id')
             ->limit(20)
@@ -128,6 +136,7 @@ class LeadController extends Controller
                 'file_name' => $fu->file_name,
                 'file_size' => $fu->file_size,
                 'file_mime' => $fu->file_mime,
+                'user_name' => $fu->user?->name,
             ]),
         ];
     }

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Enquiry;
+use App\Models\EnquiryAssignmentConfirmation;
 use App\Models\User;
 use App\Notifications\EnquiryAssigned;
+use Illuminate\Support\Str;
 use App\Services\EnquiryImportService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -23,10 +25,15 @@ class EnquiryController extends Controller
             'color'  => $user->color ?? 0,
         ]);
 
-        $enquiries = Enquiry::with(['followUps', 'assignedUser'])
+        $query = Enquiry::with(['followUps.user', 'assignedUser'])
             ->orderByDesc('date')
-            ->orderByDesc('id')
-            ->get()
+            ->orderByDesc('id');
+
+        if (auth()->user()?->hasRole('Sales')) {
+            $query->where('user_id', auth()->id());
+        }
+
+        $enquiries = $query->get()
             ->map(fn (Enquiry $enquiry) => [
                 'id'                    => $enquiry->id,
                 'contactform7_id'       => $enquiry->contactform7_id ?? '',
@@ -73,6 +80,7 @@ class EnquiryController extends Controller
                     'file_name' => $followUp->file_name,
                     'file_size' => $followUp->file_size,
                     'file_mime' => $followUp->file_mime,
+                    'user_name' => $followUp->user?->name,
                 ]),
             ]);
 
@@ -81,6 +89,12 @@ class EnquiryController extends Controller
 
     public function store(Request $request)
     {
+        
+        if (auth()->user()?->hasRole('Sales')) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'You are not allowed to create enquiries.']);
+            return redirect()->back();
+        }
+
         $validated = $request->validate([
             'name'    => ['required', 'string', 'max:255'],
             'phone'   => ['nullable', 'string', 'max:50'],
@@ -108,7 +122,8 @@ class EnquiryController extends Controller
     public function update(Request $request, Enquiry $enquiry)
     {
         $isSuperAdmin = auth()->user()?->hasRole('Super Admin');
-        if (! $isSuperAdmin && auth()->user()?->id !== $enquiry->user_id) {
+        $isAdmin      = auth()->user()?->hasRole('Admin');
+        if (! $isSuperAdmin && ! $isAdmin && auth()->user()?->id !== $enquiry->user_id) {
             Inertia::flash('toast', ['type' => 'error', 'message' => 'You are not allowed to edit this enquiry.']);
             return redirect()->back();
         }
@@ -132,14 +147,20 @@ class EnquiryController extends Controller
             'status'  => ['sometimes', 'in:New,Contacted,Meeting,1st Deposit,2nd Deposit,Closed,Lost'],
         ];
 
-        if ($isSuperAdmin) {
+        if ($isSuperAdmin || $isAdmin) {
             $rules['user_id'] = ['sometimes', 'nullable', 'integer', 'exists:users,id'];
         }
 
         $enquiry->update($request->validate($rules));
 
-        if ($isSuperAdmin && $enquiry->user_id && $enquiry->user_id !== $previousUserId) {
-            $enquiry->assignedUser?->notify(new EnquiryAssigned($enquiry));
+        if (($isSuperAdmin || $isAdmin) && $enquiry->user_id && $enquiry->user_id !== $previousUserId) {
+            $token = Str::uuid()->toString();
+            EnquiryAssignmentConfirmation::create([
+                'enquiry_id' => $enquiry->id,
+                'user_id'    => $enquiry->user_id,
+                'token'      => $token,
+            ]);
+            $enquiry->assignedUser?->notify(new EnquiryAssigned($enquiry, $token));
         }
 
         return redirect()->back()->with('flash', 'Enquiry updated successfully');
@@ -147,8 +168,9 @@ class EnquiryController extends Controller
 
     public function destroy(Enquiry $enquiry)
     {
-        if (! auth()->user()?->hasRole('Super Admin')) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => 'Only Super Admins can delete enquiries.']);
+        $canDelete = auth()->user()?->hasRole('Super Admin') || auth()->user()?->hasRole('Admin');
+        if (! $canDelete) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'You are not allowed to delete enquiries.']);
             return redirect()->back();
         }
 

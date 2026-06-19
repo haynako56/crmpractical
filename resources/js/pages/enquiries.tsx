@@ -7,7 +7,7 @@ import {
     Download,
     Upload,
     Plus,
-    Grid3X3,
+    Grid3x3,
     List,
     Columns3,
     MapPin,
@@ -48,6 +48,7 @@ interface FollowUp {
     file_name: string | null;
     file_size: number | null;
     file_mime: string | null;
+    user_name: string | null;
 }
 
 interface Enquiry {
@@ -382,6 +383,7 @@ export default function EnquiriesPage() {
     const { enquiries: serverEnquiries, users = [], flash } = usePage<{ enquiries: Enquiry[]; users: CrmUser[]; flash?: string }>().props;
     const { auth } = usePage<{ auth: Auth }>().props;
     const isSuperAdmin = auth.isSuperAdmin ?? false;
+    const isAdmin      = auth.isAdmin ?? false;
 
     // Optimistic overrides sit on top of server data. Cleared automatically when
     // Inertia refreshes props (the server becomes the source of truth again).
@@ -679,7 +681,7 @@ export default function EnquiriesPage() {
     const totalPages         = Math.max(1, Math.ceil(filteredEnquiries.length / PAGE_SIZE));
     const paginatedEnquiries = filteredEnquiries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
     const selectedEnquiry    = enquiries.find((enquiry) => enquiry.id === selectedId) ?? null;
-    const canEdit            = isSuperAdmin || auth.user.id === selectedEnquiry?.user_id;
+    const canEdit            = isSuperAdmin || isAdmin || auth.user.id === selectedEnquiry?.user_id;
 
     function resetToFirstPage() {
         setCurrentPage(1);
@@ -729,12 +731,14 @@ export default function EnquiriesPage() {
                         >
                             <Download size={15} /> Export CSV
                         </button>
-                        <button
-                            onClick={openAddNew}
-                            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-800 hover:cursor-pointer"
-                        >
-                            <Plus size={15} /> New enquiry
-                        </button>
+                        {(isSuperAdmin || isAdmin) && (
+                            <button
+                                onClick={openAddNew}
+                                className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-800 hover:cursor-pointer"
+                            >
+                                <Plus size={15} /> New enquiry
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -790,7 +794,7 @@ export default function EnquiriesPage() {
                     <div className="ml-auto flex overflow-hidden rounded-lg border border-gray-300 bg-white shadow-sm">
                         {(['cards', 'list', 'kanban'] as const).map((viewKey) => {
                             const viewLabel = viewKey === 'cards' ? 'Cards' : viewKey === 'list' ? 'List' : 'Pipeline';
-                            const viewIcon  = viewKey === 'cards' ? <Grid3X3 size={14} /> : viewKey === 'list' ? <List size={14} /> : <Columns3 size={14} />;
+                            const viewIcon  = viewKey === 'cards' ? <Grid3x3 size={14} /> : viewKey === 'list' ? <List size={14} /> : <Columns3 size={14} />;
                             return (
                                 <button
                                     key={viewKey}
@@ -1022,7 +1026,7 @@ export default function EnquiriesPage() {
                                         ))}
                                     </select>
                                 </div>
-                                {isSuperAdmin && (
+                                {(isSuperAdmin || isAdmin) && (
                                     <div>
                                         <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">Sales rep</label>
                                         <select
@@ -1069,7 +1073,7 @@ export default function EnquiriesPage() {
                             {selectedEnquiry && selectedEnquiry.followUps.length > 0 && (
                                 <div>
                                     <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                                        Follow-up history ({selectedEnquiry.followUps.length})
+                                        Notes Updates ({selectedEnquiry.followUps.length})
                                     </label>
                                     <div className="space-y-2">
                                         {selectedEnquiry.followUps.map((followUp) => {
@@ -1202,14 +1206,14 @@ export default function EnquiriesPage() {
                             {/* Follow-up history */}
                             <div>
                                 <p className="mb-2 border-b border-gray-100 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                                    Follow-up history ({selectedEnquiry.followUps.length})
+                                    Notes Update ({selectedEnquiry.followUps.length})
                                 </p>
                                 {selectedEnquiry.followUps.length > 0 ? (
                                     <div className="space-y-2">
                                         {selectedEnquiry.followUps.map((followUp) => (
                                             <div key={followUp.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
                                                 <div className="mb-0.5 flex items-center justify-between">
-                                                    <p className="text-[11px] font-semibold text-gray-400">{formatDate(followUp.date)}</p>
+                                                    <p className="text-[11px] font-semibold text-gray-400">{followUp.user_name ?? formatDate(followUp.date)}</p>
                                                     <button
                                                         onClick={() => deleteFollowUp(followUp.id)}
                                                         className="text-gray-300 transition hover:text-red-500"
@@ -1258,7 +1262,7 @@ export default function EnquiriesPage() {
                                     <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Status &amp; assignment</p>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs text-gray-500">Assigned to:</span>
-                                        {isSuperAdmin ? (
+                                        {(isSuperAdmin || isAdmin) ? (
                                             <select
                                                 value={String(selectedEnquiry.user_id ?? '')}
                                                 onChange={(event) => handleUserAssign(event.target.value)}
@@ -1367,7 +1371,7 @@ export default function EnquiriesPage() {
 
                             {/* Add update */}
                             {canEdit && <div>
-                                <p className="mb-2 border-b border-gray-100 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Add update</p>
+                                <p className="mb-2 border-b border-gray-100 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Note Update</p>
                                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                                     <textarea
                                         value={newNoteText}
@@ -1439,7 +1443,7 @@ export default function EnquiriesPage() {
                                 </>
                             ) : (
                                 <>
-                                    {isSuperAdmin && (
+                                    {(isSuperAdmin || isAdmin) && (
                                         <button
                                             onClick={handleDelete}
                                             className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 hover:cursor-pointer"
@@ -1576,7 +1580,7 @@ export default function EnquiriesPage() {
                                         {TYPE_OPTIONS.map((option) => <option key={option}>{option}</option>)}
                                     </select>
                                 </div>
-                                {isSuperAdmin && (
+                                {(isSuperAdmin || isAdmin) && (
                                     <div>
                                         <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">Sales rep</label>
                                         <select

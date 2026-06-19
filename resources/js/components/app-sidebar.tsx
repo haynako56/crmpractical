@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Bell, Users, Target, DollarSign, BarChart3, PieChart, RefreshCw } from 'lucide-react';
+import { LayoutGrid, Bell, Users, Target, DollarSign, BarChart3, PieChart, RefreshCw, Paperclip } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -19,12 +19,15 @@ const reportNavItems: NavItem[] = [
 export function AppSidebar() {
     const { alertCount, auth } = usePage<{ alertCount: number; auth: Auth }>().props;
 
+    const isSales = !auth.isSuperAdmin && !auth.isAdmin;
+
     const mainNavItems: NavItem[] = [
         { title: 'Enquiries', href: '/enquiries', icon: LayoutGrid },
         { title: 'Alerts',    href: '/alerts',    icon: Bell, badge: alertCount ?? 0 },
-        { title: 'Team',      href: '/team',      icon: Users       },
+        ...(!isSales ? [{ title: 'Team', href: '/team', icon: Users } as NavItem] : []),
         { title: 'Leads',     href: '/leads',      icon: Target      },
         { title: 'Deposits',  href: '/deposits',   icon: DollarSign  },
+        { title: 'Files',     href: '/files',      icon: Paperclip   },
     ];
 
     const adminNavItems: NavItem[] = auth.isSuperAdmin

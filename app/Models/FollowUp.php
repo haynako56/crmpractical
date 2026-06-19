@@ -9,6 +9,7 @@ class FollowUp extends Model
 {
     protected $fillable = [
         'enquiry_id',
+        'user_id',
         'date',
         'message',
         'file_path',
@@ -24,5 +25,10 @@ class FollowUp extends Model
     public function enquiry(): BelongsTo
     {
         return $this->belongsTo(Enquiry::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

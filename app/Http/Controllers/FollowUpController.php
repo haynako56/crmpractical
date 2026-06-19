@@ -19,6 +19,7 @@ class FollowUpController extends Controller
     private function canEdit(?int $enquiryUserId): bool
     {
         return auth()->user()?->hasRole('Super Admin')
+            || auth()->user()?->hasRole('Admin')
             || auth()->user()?->id === $enquiryUserId;
     }
 
@@ -48,6 +49,7 @@ class FollowUpController extends Controller
         }
 
         $enquiry->followUps()->create([
+            'user_id'   => auth()->id(),
             'date'      => $request->date,
             'message'   => $request->message,
             'file_path' => $filePath,
@@ -73,7 +75,7 @@ class FollowUpController extends Controller
             'remove_file' => ['nullable'],
         ]);
 
-        $data = ['message' => $request->message];
+        $data = ['user_id' => auth()->id(), 'message' => $request->message];
 
         if ($request->hasFile('file')) {
             if ($followUp->file_path) {
