@@ -33,7 +33,9 @@ class AlertController extends Controller
         $ok      = collect();
 
         foreach ($active as $enquiry) {
-            $hasResponse = $enquiry->followUps->isNotEmpty() || ! empty($enquiry->fu);
+            $hasResponse = $enquiry->status !== 'New'
+                || $enquiry->followUps->isNotEmpty()
+                || ! empty($enquiry->fu);
             $ts          = $enquiry->first_contact_timestamp;
 
             if ($hasResponse || $ts->gt($threshold4h)) {

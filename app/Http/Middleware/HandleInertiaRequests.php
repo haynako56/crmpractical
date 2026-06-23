@@ -24,7 +24,7 @@ class HandleInertiaRequests extends Middleware
      */
     private function alertCount(): int
     {
-        $query = Enquiry::whereNotIn('status', ['1st Deposit', '2nd Deposit', 'Cold', 'Lost'])
+        $query = Enquiry::where('status', 'New')
             ->whereNotNull('first_contact_timestamp')
             ->where('first_contact_timestamp', '<=', now()->subHours(4))
             ->whereDoesntHave('followUps')

@@ -204,7 +204,7 @@ function OkTable({ enquiries, onSelect }: { enquiries: FullEnquiry[]; onSelect: 
                                     </span>
                                 </td>
                                 <td className="hidden px-4 py-3 text-xs text-gray-500 md:table-cell">
-                                    {enquiry.hasNotes ? 'Note recorded' : 'Within 4h'}
+                                    {enquiry.hasNotes ? 'Note recorded' : enquiry.status !== 'New' ? 'Status updated' : 'Within 4h'}
                                 </td>
                             </tr>
                         );

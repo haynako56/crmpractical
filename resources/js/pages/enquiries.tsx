@@ -158,8 +158,7 @@ function getFileIconConfig(fileName: string): { bgClass: string; icon: React.Rea
 type AlertLevel = 'urgent' | 'warning' | 'ok';
 
 function getAlertLevel(enquiry: Enquiry): AlertLevel {
-    const terminalStatuses = ['1st Deposit', '2nd Deposit', 'Cold', 'Lost'];
-    if (terminalStatuses.includes(enquiry.status)) return 'ok';
+    if (enquiry.status !== 'New') return 'ok';
     if (enquiry.fu) return 'ok';
     const elapsedMs = Date.now() - new Date(enquiry.firstContactTimestamp).getTime();
     if (elapsedMs >= ALERT_24H) return 'urgent';

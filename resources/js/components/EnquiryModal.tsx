@@ -123,8 +123,7 @@ function formatElapsed(timestamp: string) {
 }
 
 function getAlertLevel(enquiry: FullEnquiry): 'urgent' | 'warning' | 'ok' {
-    const terminal = ['1st Deposit', '2nd Deposit', 'Cold', 'Lost'];
-    if (terminal.includes(enquiry.status)) return 'ok';
+    if (enquiry.status !== 'New') return 'ok';
     if (enquiry.fu || enquiry.followUps?.length) return 'ok';
     const elapsedMs = Date.now() - new Date(enquiry.firstContactTimestamp).getTime();
     if (elapsedMs >= ALERT_24H) return 'urgent';
