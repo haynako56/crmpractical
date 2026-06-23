@@ -31,7 +31,7 @@ class DepositController extends Controller
             ->with($with)->orderByDesc('date')->orderByDesc('id')
             ->get()->map(fn (Enquiry $e) => $this->row($e));
 
-        $closed = (clone $base)->where('status', 'Closed')
+        $closed = (clone $base)->where('status', 'Cold')
             ->with($with)->orderByDesc('date')->orderByDesc('id')
             ->get()->map(fn (Enquiry $e) => $this->row($e));
 

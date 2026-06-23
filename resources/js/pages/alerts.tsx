@@ -29,7 +29,7 @@ const STATUS_BADGE: Record<string, string> = {
     Meeting:       'bg-purple-50 text-purple-800',
     '1st Deposit': 'bg-green-50 text-green-800',
     '2nd Deposit': 'bg-teal-50 text-teal-800',
-    Closed:        'bg-gray-100 text-gray-600',
+    Cold:        'bg-gray-100 text-gray-600',
     Lost:          'bg-red-50 text-red-700',
 };
 

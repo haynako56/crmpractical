@@ -27,7 +27,7 @@ interface MonthlyFlowRow {
     Meeting: number;
     '1st Deposit': number;
     '2nd Deposit': number;
-    Closed: number;
+    Cold: number;
     Lost: number;
 }
 
@@ -55,7 +55,7 @@ interface PageProps extends Record<string, unknown> {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STATUSES = ['New', 'Contacted', 'Meeting', '1st Deposit', '2nd Deposit', 'Closed', 'Lost'] as const;
+const STATUSES = ['New', 'Contacted', 'Meeting', '1st Deposit', '2nd Deposit', 'Cold', 'Lost'] as const;
 
 // Chart fill colors (saturated, clearly distinct)
 const STATUS_CHART_COLORS: Record<string, string> = {
@@ -64,7 +64,7 @@ const STATUS_CHART_COLORS: Record<string, string> = {
     Meeting:       '#8b5cf6',
     '1st Deposit': '#22c55e',
     '2nd Deposit': '#0d9488',
-    Closed:        '#9ca3af',
+    Cold:        '#9ca3af',
     Lost:          '#ef4444',
 };
 
@@ -75,7 +75,7 @@ const STATUS_BADGE: Record<string, string> = {
     Meeting:       'bg-purple-50 text-purple-800',
     '1st Deposit': 'bg-green-50 text-green-800',
     '2nd Deposit': 'bg-teal-50 text-teal-800',
-    Closed:        'bg-gray-100 text-gray-600',
+    Cold:        'bg-gray-100 text-gray-600',
     Lost:          'bg-red-50 text-red-700',
 };
 

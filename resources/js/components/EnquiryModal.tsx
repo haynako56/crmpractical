@@ -68,7 +68,7 @@ export interface FullEnquiry {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STATUSES = ['New', 'Contacted', 'Meeting', '1st Deposit', '2nd Deposit', 'Closed', 'Lost'];
+const STATUSES = ['New', 'Contacted', 'Meeting', '1st Deposit', '2nd Deposit', 'Cold', 'Lost'];
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
     New:           { bg: 'bg-blue-50',   text: 'text-blue-800',   border: 'border-blue-200' },
@@ -76,7 +76,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }
     Meeting:       { bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-200' },
     '1st Deposit': { bg: 'bg-green-50',  text: 'text-green-800',  border: 'border-green-200' },
     '2nd Deposit': { bg: 'bg-teal-50',   text: 'text-teal-800',   border: 'border-teal-200' },
-    Closed:        { bg: 'bg-gray-100',  text: 'text-gray-700',   border: 'border-gray-200' },
+    Cold:        { bg: 'bg-gray-100',  text: 'text-gray-700',   border: 'border-gray-200' },
     Lost:          { bg: 'bg-red-50',    text: 'text-red-800',    border: 'border-red-200' },
 };
 
@@ -123,7 +123,7 @@ function formatElapsed(timestamp: string) {
 }
 
 function getAlertLevel(enquiry: FullEnquiry): 'urgent' | 'warning' | 'ok' {
-    const terminal = ['1st Deposit', '2nd Deposit', 'Closed', 'Lost'];
+    const terminal = ['1st Deposit', '2nd Deposit', 'Cold', 'Lost'];
     if (terminal.includes(enquiry.status)) return 'ok';
     if (enquiry.fu || enquiry.followUps?.length) return 'ok';
     const elapsedMs = Date.now() - new Date(enquiry.firstContactTimestamp).getTime();

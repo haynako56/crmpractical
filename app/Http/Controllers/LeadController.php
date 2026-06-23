@@ -9,7 +9,7 @@ use Inertia\Inertia;
 
 class LeadController extends Controller
 {
-    private const TERMINAL = ['Closed', 'Lost'];
+    private const TERMINAL = ['Cold', 'Lost'];
 
     public function index()
     {

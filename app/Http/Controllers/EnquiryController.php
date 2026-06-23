@@ -144,7 +144,7 @@ class EnquiryController extends Controller
             'fu'      => ['sometimes', 'nullable', 'string'],
             'dep1'    => ['sometimes', 'in:YES,NO'],
             'dep2'    => ['sometimes', 'in:YES,NO'],
-            'status'  => ['sometimes', 'in:New,Contacted,Meeting,1st Deposit,2nd Deposit,Closed,Lost'],
+            'status'  => ['sometimes', 'in:New,Contacted,Meeting,1st Deposit,2nd Deposit,Cold,Lost'],
         ];
 
         if ($isSuperAdmin || $isAdmin) {

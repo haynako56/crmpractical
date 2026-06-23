@@ -13,7 +13,7 @@ class SendNoResponseAlerts extends Command
 
     protected $description = 'Notify assigned users when no follow-up has been logged in the last 24 hours';
 
-    private const TERMINAL_STATUSES = ['1st Deposit', '2nd Deposit', 'Closed', 'Lost'];
+    private const TERMINAL_STATUSES = ['1st Deposit', '2nd Deposit', 'Cold', 'Lost'];
 
     public function handle(): void
     {

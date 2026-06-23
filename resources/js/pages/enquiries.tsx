@@ -86,7 +86,7 @@ interface Enquiry {
 }
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
-const STATUSES = ['New', 'Contacted', 'Meeting', '1st Deposit', '2nd Deposit', 'Closed', 'Lost'];
+const STATUSES = ['New', 'Contacted', 'Meeting', '1st Deposit', '2nd Deposit', 'Cold', 'Lost'];
 
 const TYPE_OPTIONS   = ['H&L', 'KDRB', 'Contract', 'Duplex', 'Custom Duplex', 'Dual Living', 'KDRB/Dual Living'];
 const SOURCE_OPTIONS = ['Email', 'Phone', 'Realestate.com', 'Display Home', 'Website', 'Facebook', 'Google', 'Signage', 'Referral', 'Other'];
@@ -98,7 +98,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }
     Meeting:       { bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-200' },
     '1st Deposit': { bg: 'bg-green-50',  text: 'text-green-800',  border: 'border-green-200' },
     '2nd Deposit': { bg: 'bg-teal-50',   text: 'text-teal-800',   border: 'border-teal-200' },
-    Closed:        { bg: 'bg-gray-100',  text: 'text-gray-700',   border: 'border-gray-200' },
+    Cold:        { bg: 'bg-gray-100',  text: 'text-gray-700',   border: 'border-gray-200' },
     Lost:          { bg: 'bg-red-50',    text: 'text-red-800',    border: 'border-red-200' },
 };
 
@@ -158,7 +158,7 @@ function getFileIconConfig(fileName: string): { bgClass: string; icon: React.Rea
 type AlertLevel = 'urgent' | 'warning' | 'ok';
 
 function getAlertLevel(enquiry: Enquiry): AlertLevel {
-    const terminalStatuses = ['1st Deposit', '2nd Deposit', 'Closed', 'Lost'];
+    const terminalStatuses = ['1st Deposit', '2nd Deposit', 'Cold', 'Lost'];
     if (terminalStatuses.includes(enquiry.status)) return 'ok';
     if (enquiry.fu) return 'ok';
     const elapsedMs = Date.now() - new Date(enquiry.firstContactTimestamp).getTime();
@@ -338,7 +338,7 @@ const KANBAN_COLORS: Record<string, string> = {
     Meeting:       'bg-purple-50 text-purple-700',
     '1st Deposit': 'bg-green-50 text-green-700',
     '2nd Deposit': 'bg-teal-50 text-teal-700',
-    Closed:        'bg-gray-100 text-gray-600',
+    Cold:        'bg-gray-100 text-gray-600',
     Lost:          'bg-red-50 text-red-700',
 };
 

@@ -175,7 +175,7 @@ export default function DepositsPage() {
                     <StatCard label="2nd deposits"    value={stats.dep2Count} accent="#0d9488" icon={DollarSign}   />
                     <StatCard label="Total enquiries" value={stats.total}     accent="#1a3a5c" icon={Users}         />
                     <StatCard label="In meetings"     value={stats.pipeline}  accent="#6d28d9" icon={CalendarDays} />
-                    <StatCard label="Closed"          value={stats.closed}    accent="#6b7280" icon={Building2}    />
+                    <StatCard label="Cold"          value={stats.closed}    accent="#6b7280" icon={Building2}    />
                 </div>
 
                 {/* 1st Deposits */}
@@ -205,10 +205,10 @@ export default function DepositsPage() {
                     </div>
                 )}
 
-                {/* Closed */}
+                {/* Cold */}
                 {closed.length > 0 && (
                     <>
-                        <SectionDivider label="Closed" />
+                        <SectionDivider label="Cold" />
                         <div className="space-y-2.5">
                             {closed.map((row) => <DepositCard key={row.id} row={row} depositNum="?" onSelect={setSelectedId} />)}
                         </div>

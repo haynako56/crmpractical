@@ -11,7 +11,7 @@ use Inertia\Inertia;
 class ReportController extends Controller
 {
     private const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    private const STATUSES = ['New', 'Contacted', 'Meeting', '1st Deposit', '2nd Deposit', 'Closed', 'Lost'];
+    private const STATUSES = ['New', 'Contacted', 'Meeting', '1st Deposit', '2nd Deposit', 'Cold', 'Lost'];
 
     public function reports(Request $request)
     {
@@ -168,8 +168,8 @@ class ReportController extends Controller
         // Overall totals
         $totals = [
             'total'    => (clone $roleBase)->count(),
-            'active'   => (clone $roleBase)->whereNotIn('status', ['Closed', 'Lost'])->count(),
-            'closed'   => (clone $roleBase)->where('status', 'Closed')->count(),
+            'active'   => (clone $roleBase)->whereNotIn('status', ['Cold', 'Lost'])->count(),
+            'closed'   => (clone $roleBase)->where('status', 'Cold')->count(),
             'lost'     => (clone $roleBase)->where('status', 'Lost')->count(),
             'deposits' => (clone $roleBase)->whereIn('status', ['1st Deposit', '2nd Deposit'])->count(),
         ];

@@ -40,14 +40,14 @@ interface Enquiry {
   files: File[];
 }
 
-const STATUSES = ['New', 'Contacted', 'Meeting', '1st Deposit', '2nd Deposit', 'Closed', 'Lost'];
+const STATUSES = ['New', 'Contacted', 'Meeting', '1st Deposit', '2nd Deposit', 'Cold', 'Lost'];
 const STATUS_COLORS: Record<string, string> = {
   New: '#dbeafe text-blue-900',
   Contacted: '#fef3c7 text-yellow-900',
   Meeting: '#ede9fe text-purple-900',
   '1st Deposit': '#dcfce7 text-green-900',
   '2nd Deposit': '#d1fae5 text-teal-900',
-  Closed: '#f3f4f6 text-gray-900',
+  Cold: '#f3f4f6 text-gray-900',
   Lost: '#fee2e2 text-red-900',
 };
 

@@ -19,7 +19,7 @@ class TeamController extends Controller
 
         $users = User::withCount([
             'enquiries as total_count',
-            'enquiries as active_count'   => fn ($q) => $q->whereNotIn('status', ['Closed', 'Lost']),
+            'enquiries as active_count'   => fn ($q) => $q->whereNotIn('status', ['Cold', 'Lost']),
             'enquiries as deposit_count'  => fn ($q) => $q->whereIn('status', ['1st Deposit', '2nd Deposit']),
         ])->orderBy('name')->get()->map(fn (User $user) => [
             'id'            => $user->id,

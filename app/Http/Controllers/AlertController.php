@@ -9,7 +9,7 @@ use Inertia\Inertia;
 
 class AlertController extends Controller
 {
-    private const TERMINAL = ['1st Deposit', '2nd Deposit', 'Closed', 'Lost'];
+    private const TERMINAL = ['1st Deposit', '2nd Deposit', 'Cold', 'Lost'];
 
     public function index()
     {
