@@ -25,9 +25,9 @@ class EnquiryNoResponse extends Notification
         $enquiry = $this->enquiry;
 
         return (new MailMessage)
-            ->subject("No response logged — {$enquiry->name}")
+            ->subject("Action required — {$enquiry->name} has not been contacted")
             ->greeting("Hi {$notifiable->name},")
-            ->line("There has been no follow-up logged in the last 24 hours for the following enquiry assigned to you.")
+            ->line("The following lead assigned to you has not been contacted. Please update the status or log a follow-up note.")
             ->line("**Client:** {$enquiry->name}")
             ->when($enquiry->phone,  fn ($mail) => $mail->line("**Phone:** {$enquiry->phone}"))
             ->when($enquiry->email,  fn ($mail) => $mail->line("**Email:** {$enquiry->email}"))
@@ -36,7 +36,7 @@ class EnquiryNoResponse extends Notification
             ->when($enquiry->source, fn ($mail) => $mail->line("**Source:** {$enquiry->source}"))
             ->line("**Status:** {$enquiry->status}")
             ->action('View Enquiry', url('/enquiries'))
-            ->line('Please log a follow-up note as soon as possible.')
+            ->line('Update the status to Contacted or log a follow-up note to clear this alert.')
             ->salutation('Regards, ' . config('app.name'));
     }
 }

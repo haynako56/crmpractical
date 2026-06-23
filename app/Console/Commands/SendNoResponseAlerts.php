@@ -13,17 +13,16 @@ class SendNoResponseAlerts extends Command
 
     protected $description = 'Notify assigned users when no follow-up has been logged in the last 24 hours';
 
-    private const TERMINAL_STATUSES = ['1st Deposit', '2nd Deposit', 'Cold', 'Lost'];
-
     public function handle(): void
     {
         $hours = (int) $this->option('hours');
 
         $enquiries = Enquiry::whereNotNull('user_id')
-            ->whereNotIn('status', self::TERMINAL_STATUSES)
-            ->whereDoesntHave('followUps', function ($query) use ($hours) {
-                $query->where('created_at', '>=', now()->subHours($hours));
-            })
+            ->where('status', 'New')
+            ->whereNotNull('first_contact_timestamp')
+            ->where('first_contact_timestamp', '<=', now()->subHours($hours))
+            ->whereDoesntHave('followUps')
+            ->where(fn ($query) => $query->whereNull('fu')->orWhere('fu', ''))
             ->with('assignedUser')
             ->get();
 
