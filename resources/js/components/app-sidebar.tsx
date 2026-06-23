@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Bell, Users, Target, DollarSign, BarChart3, PieChart, RefreshCw, Paperclip } from 'lucide-react';
+import { LayoutGrid, Bell, Users, Target, DollarSign, BarChart3, PieChart, ClipboardList, RefreshCw, Paperclip } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -12,8 +12,9 @@ import {
 import type { Auth, NavItem } from '@/types';
 
 const reportNavItems: NavItem[] = [
-    { title: 'Reports',       href: '/reports',       icon: BarChart3 },
-    { title: 'Status Report', href: '/status-report', icon: PieChart  },
+    { title: 'Reports',       href: '/reports',       icon: BarChart3      },
+    { title: 'Status Report', href: '/status-report', icon: PieChart       },
+    { title: 'Rep Report',    href: '/rep-report',    icon: ClipboardList  },
 ];
 
 export function AppSidebar() {

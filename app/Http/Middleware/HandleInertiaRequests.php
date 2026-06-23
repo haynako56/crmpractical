@@ -37,6 +37,46 @@ class HandleInertiaRequests extends Middleware
         return $query->count();
     }
 
+    private function alertNotifications(): array
+    {
+        $now          = now();
+        $threshold4h  = $now->copy()->subHours(4);
+        $threshold24h = $now->copy()->subHours(24);
+
+        $query = Enquiry::where('status', 'New')
+            ->whereNotNull('first_contact_timestamp')
+            ->where('first_contact_timestamp', '<=', $threshold4h)
+            ->whereDoesntHave('followUps')
+            ->where(fn ($q) => $q->whereNull('fu')->orWhere('fu', ''))
+            ->with('assignedUser:id,name')
+            ->orderBy('first_contact_timestamp')
+            ->limit(20);
+
+        if (auth()->user()?->hasRole('Sales')) {
+            $query->where('user_id', auth()->id());
+        }
+
+        return $query->get()->map(function ($enquiry) use ($now, $threshold24h) {
+            $ts    = $enquiry->first_contact_timestamp;
+            $level = $ts->lte($threshold24h) ? 'urgent' : 'warning';
+            $diff  = abs($now->diffInSeconds($ts));
+
+            if ($diff < 3600)      $elapsed = floor($diff / 60) . 'm ago';
+            elseif ($diff < 86400) $elapsed = floor($diff / 3600) . 'h ago';
+            else                   $elapsed = floor($diff / 86400) . 'd ago';
+
+            return [
+                'id'      => $enquiry->id,
+                'level'   => $level,
+                'rep'     => $enquiry->assignedUser?->name ?? '',
+                'name'    => $enquiry->name,
+                'type'    => $enquiry->type ?? '',
+                'loc'     => $enquiry->loc ?? '',
+                'elapsed' => $elapsed,
+            ];
+        })->toArray();
+    }
+
     public function version(Request $request): ?string
     {
         return parent::version($request);
@@ -59,7 +99,8 @@ class HandleInertiaRequests extends Middleware
                 'isSuperAdmin' => $request->user()?->hasRole('Super Admin') ?? false,
                 'isAdmin'      => $request->user()?->hasRole('Admin') ?? false,
             ],
-            'alertCount'  => $request->user() ? $this->alertCount() : 0,
+            'alertCount'         => $request->user() ? $this->alertCount() : 0,
+            'alertNotifications' => $request->user() ? $this->alertNotifications() : [],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash'       => $request->session()->get('flash'),
         ];

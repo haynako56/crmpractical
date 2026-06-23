@@ -21,6 +21,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('reports', [\App\Http\Controllers\ReportController::class, 'reports'])->name('reports');
     Route::get('status-report', [\App\Http\Controllers\ReportController::class, 'statusReport'])->name('status-report');
+    Route::get('rep-report', [\App\Http\Controllers\ReportController::class, 'repReport'])->name('rep-report');
 
     Route::get('enquiries', [\App\Http\Controllers\EnquiryController::class, 'index'])->name('enquiries');
     Route::post('enquiries', [\App\Http\Controllers\EnquiryController::class, 'store'])->name('enquiries.store');

@@ -98,6 +98,163 @@ class ReportController extends Controller
         ]);
     }
 
+    public function repReport()
+    {
+        $isSuperAdmin = auth()->user()?->hasRole('Super Admin');
+        $isAdmin      = auth()->user()?->hasRole('Admin');
+        $isSales      = ! $isSuperAdmin && ! $isAdmin;
+        $userId       = auth()->id();
+
+        $now          = now();
+        $threshold4h  = $now->copy()->subHours(4);
+        $threshold24h = $now->copy()->subHours(24);
+
+        $usersQuery = User::with([
+            'enquiries' => fn ($query) => $query
+                ->with(['followUps.user', 'assignedUser'])
+                ->orderByDesc('date')
+                ->orderByDesc('id'),
+        ])->orderBy('name');
+
+        if ($isSales) {
+            $usersQuery->where('id', $userId);
+        }
+
+        $users = $usersQuery->get();
+
+        $allUsers = User::orderBy('name')->get()->map(fn (User $user) => [
+            'id'     => $user->id,
+            'name'   => $user->name,
+            'email'  => $user->email,
+            'title'  => $user->title,
+            'phone'  => $user->phone,
+            'status' => $user->status,
+            'color'  => $user->color ?? 0,
+        ]);
+
+        $baseEnq = Enquiry::query();
+        if ($isSales) {
+            $baseEnq->where('user_id', $userId);
+        }
+
+        $summary = [
+            'total'       => (clone $baseEnq)->count(),
+            'newToday'    => (clone $baseEnq)->whereDate('date', $now->toDateString())->count(),
+            'newWeek'     => (clone $baseEnq)->where('date', '>=', $now->copy()->subDays(7)->startOfDay())->count(),
+            'meetings'    => (clone $baseEnq)->where('status', 'Meeting')->count(),
+            'deposits'    => (clone $baseEnq)->whereIn('status', ['1st Deposit', '2nd Deposit'])->count(),
+        ];
+
+        $reps = $users->map(function (User $user) use ($now, $threshold4h, $threshold24h) {
+            $statusCounts = array_fill_keys(self::STATUSES, 0);
+
+            $enquiries = $user->enquiries->map(function ($enquiry) use ($now, $threshold4h, $threshold24h, &$statusCounts) {
+                if (isset($statusCounts[$enquiry->status])) {
+                    $statusCounts[$enquiry->status]++;
+                }
+
+                $alertLevel = 'ok';
+                $elapsed    = null;
+
+                if ($enquiry->status === 'New' && $enquiry->first_contact_timestamp) {
+                    $hasResponse = $enquiry->followUps->isNotEmpty() || ! empty($enquiry->fu);
+                    if (! $hasResponse) {
+                        $ts      = $enquiry->first_contact_timestamp;
+                        $elapsed = $this->fmtElapsed($now->diffInSeconds($ts, false));
+                        if ($ts->lte($threshold24h)) {
+                            $alertLevel = 'urgent';
+                        } elseif ($ts->lte($threshold4h)) {
+                            $alertLevel = 'warning';
+                        }
+                    }
+                }
+
+                $ts = $enquiry->first_contact_timestamp;
+
+                return [
+                    'id'                    => $enquiry->id,
+                    'contactform7_id'       => $enquiry->contactform7_id ?? '',
+                    'cf7_status'            => $enquiry->cf7_status ?? '',
+                    'date'                  => $enquiry->date?->format('Y-m-d'),
+                    'name'                  => $enquiry->name,
+                    'phone'                 => $enquiry->phone ?? '',
+                    'email'                 => $enquiry->email ?? '',
+                    'postcode'              => $enquiry->postcode ?? '',
+                    'source'                => $enquiry->source ?? '',
+                    'where_did_you_hear'    => $enquiry->where_did_you_hear ?? '',
+                    'lead'                  => $enquiry->lead ?? '',
+                    'type'                  => $enquiry->type ?? '',
+                    'interested'            => $enquiry->interested ?? '',
+                    'loc'                   => $enquiry->loc ?? '',
+                    'rep'                   => $enquiry->rep ?? '',
+                    'status'                => $enquiry->status,
+                    'dep1'                  => $enquiry->dep1 ?? 'NO',
+                    'dep2'                  => $enquiry->dep2 ?? 'NO',
+                    'notes'                 => $enquiry->notes ?? '',
+                    'design_name'           => $enquiry->design_name ?? '',
+                    'alt_s'                 => $enquiry->alt_s ?? '',
+                    'ajxizl7033'            => $enquiry->ajxizl7033 ?? '',
+                    'message'               => $enquiry->message ?? '',
+                    'join_email_list'       => (bool) $enquiry->join_email_list,
+                    'fu'                    => $enquiry->fu ?? '',
+                    'firstContactTimestamp' => $ts?->toISOString(),
+                    'files'                 => $enquiry->files ?? [],
+                    'files_count'           => $enquiry->files_count ?? 0,
+                    'user_id'               => $enquiry->user_id,
+                    'assignedUser'          => $enquiry->assignedUser ? [
+                        'id'     => $enquiry->assignedUser->id,
+                        'name'   => $enquiry->assignedUser->name,
+                        'email'  => $enquiry->assignedUser->email,
+                        'title'  => $enquiry->assignedUser->title,
+                        'phone'  => $enquiry->assignedUser->phone,
+                        'status' => $enquiry->assignedUser->status,
+                        'color'  => $enquiry->assignedUser->color ?? 0,
+                    ] : null,
+                    'followUps'             => $enquiry->followUps->map(fn ($fu) => [
+                        'id'        => $fu->id,
+                        'date'      => $fu->date?->format('Y-m-d'),
+                        'message'   => $fu->message,
+                        'file_name' => $fu->file_name,
+                        'file_size' => $fu->file_size,
+                        'file_mime' => $fu->file_mime,
+                        'user_name' => $fu->user?->name,
+                    ]),
+                    'alertLevel'            => $alertLevel,
+                    'elapsed'               => $elapsed,
+                ];
+            });
+
+            return [
+                'id'           => $user->id,
+                'name'         => $user->name,
+                'title'        => $user->title ?? 'Sales Consultant',
+                'email'        => $user->email,
+                'phone'        => $user->phone ?? '',
+                'color'        => $user->color ?? 0,
+                'statusCounts' => $statusCounts,
+                'urgentCount'  => $enquiries->where('alertLevel', 'urgent')->count(),
+                'warningCount' => $enquiries->where('alertLevel', 'warning')->count(),
+                'enquiries'    => $enquiries->values(),
+            ];
+        });
+
+        $summary['totalAlerts'] = $reps->sum('urgentCount') + $reps->sum('warningCount');
+
+        return Inertia::render('rep-report', [
+            'summary' => $summary,
+            'reps'    => $reps->values(),
+            'users'   => $allUsers->values(),
+        ]);
+    }
+
+    private function fmtElapsed(int $diffSeconds): string
+    {
+        $diff = abs($diffSeconds);
+        if ($diff < 3600)  return floor($diff / 60) . 'm ago';
+        if ($diff < 86400) return floor($diff / 3600) . 'h ago';
+        return floor($diff / 86400) . 'd ago';
+    }
+
     public function statusReport(Request $request)
     {
         $isSales = auth()->user()?->hasRole('Sales');
