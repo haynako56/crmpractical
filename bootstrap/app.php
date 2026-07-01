@@ -15,10 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
-        $schedule->command('enquiries:sync-cf7')->hourly();
+        // $schedule->command('enquiries:sync-cf7')->everyMinute();
 
-        $schedule->command('assignments:send-reminders')->dailyAt('10:00');
-        $schedule->command('enquiries:send-no-response-alerts')->dailyAt('09:00');
+        // $schedule->command('assignments:send-reminders')->dailyAt('10:00');
+        // $schedule->command('enquiries:send-no-response-alerts')->dailyAt('09:00');
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
