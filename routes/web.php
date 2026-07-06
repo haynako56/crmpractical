@@ -23,6 +23,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('status-report', [\App\Http\Controllers\ReportController::class, 'statusReport'])->name('status-report');
     Route::get('rep-report', [\App\Http\Controllers\ReportController::class, 'repReport'])->name('rep-report');
 
+    Route::get('display-homes', [\App\Http\Controllers\DisplayHomeController::class, 'index'])->name('display-homes');
+    Route::post('walk-ins', [\App\Http\Controllers\WalkInController::class, 'store'])->name('walk-ins.store');
+    Route::patch('walk-ins/{walkIn}', [\App\Http\Controllers\WalkInController::class, 'update'])->name('walk-ins.update');
+    Route::delete('walk-ins/{walkIn}', [\App\Http\Controllers\WalkInController::class, 'destroy'])->name('walk-ins.destroy');
+
     Route::get('enquiries', [\App\Http\Controllers\EnquiryController::class, 'index'])->name('enquiries');
     Route::post('enquiries', [\App\Http\Controllers\EnquiryController::class, 'store'])->name('enquiries.store');
     Route::patch('enquiries/{enquiry}', [\App\Http\Controllers\EnquiryController::class, 'update'])->name('enquiries.update');
