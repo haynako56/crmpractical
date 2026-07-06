@@ -75,7 +75,7 @@ class EnquiryImportService
 
         // If duplicate exists: update status/follow-ups if needed, then skip
         if ($name !== '' && $phone !== '') {
-            $existing = Enquiry::where('name', $name)->where('phone', $phone)->first();
+            $existing = Enquiry::withTrashed()->where('name', $name)->where('phone', $phone)->first();
             if ($existing) {
                 $followUpRaw = trim($rowData['follow-up notes'] ?? '');
                 if ($hasDeposit && $existing->dep1 !== 'YES') {
@@ -146,7 +146,7 @@ class EnquiryImportService
     {
         $contactform7Id = trim($rowData['id'] ?? '');
 
-        if ($contactform7Id && Enquiry::where('contactform7_id', $contactform7Id)->exists()) {
+        if ($contactform7Id && Enquiry::withTrashed()->where('contactform7_id', $contactform7Id)->exists()) {
             return ['imported' => 0, 'skipped' => 1];
         }
 
