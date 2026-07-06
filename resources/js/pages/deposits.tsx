@@ -95,6 +95,10 @@ function DepositCard({ row, depositNum, onSelect }: {
         ? row.notes.length > 60 ? row.notes.substring(0, 60) + '…' : row.notes
         : null;
 
+    const displayDate = depositNum === 1 ? row.dep1_date
+        : depositNum === 2 ? row.dep2_date
+        : row.date;
+
     return (
         <div
             className="grid cursor-pointer grid-cols-[44px_1fr] items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm transition hover:border-blue-200 hover:shadow-md sm:grid-cols-[44px_1fr_auto]"
@@ -114,7 +118,7 @@ function DepositCard({ row, depositNum, onSelect }: {
 
             {/* date + rep — hidden on mobile */}
             <div className="hidden shrink-0 flex-col items-end gap-1.5 sm:flex">
-                <span className="text-xs text-gray-400">{formatDate(row.date)}</span>
+                <span className="text-xs text-gray-400">{formatDate(displayDate)}</span>
                 {rep && (
                     <span
                         className="rounded-full px-2.5 py-1 text-xs font-medium"

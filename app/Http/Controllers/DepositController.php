@@ -20,11 +20,11 @@ class DepositController extends Controller
         }
 
         $dep1 = (clone $base)->where('dep1', 'YES')
-            ->with($with)->orderByDesc('date')->orderByDesc('id')
+            ->with($with)->orderByDesc('dep1_date')->orderByDesc('id')
             ->get()->map(fn (Enquiry $e) => $this->row($e));
 
         $dep2 = (clone $base)->where('dep2', 'YES')
-            ->with($with)->orderByDesc('date')->orderByDesc('id')
+            ->with($with)->orderByDesc('dep2_date')->orderByDesc('id')
             ->get()->map(fn (Enquiry $e) => $this->row($e));
 
         $pipeline = (clone $base)->where('status', 'Meeting')
@@ -81,7 +81,9 @@ class DepositController extends Controller
             'rep'                   => $enquiry->rep ?? '',
             'status'                => $enquiry->status,
             'dep1'                  => $enquiry->dep1 ?? 'NO',
+            'dep1_date'             => $enquiry->dep1_date?->format('Y-m-d'),
             'dep2'                  => $enquiry->dep2 ?? 'NO',
+            'dep2_date'             => $enquiry->dep2_date?->format('Y-m-d'),
             'notes'                 => $enquiry->notes ?? '',
             'design_name'           => $enquiry->design_name ?? '',
             'alt_s'                 => $enquiry->alt_s ?? '',

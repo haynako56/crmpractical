@@ -69,7 +69,9 @@ interface Enquiry {
     rep: string;
     status: string;
     dep1: string;                 // 'YES' | 'NO'
+    dep1_date: string | null;
     dep2: string;                 // 'YES' | 'NO'
+    dep2_date: string | null;
     notes: string;
     design_name: string;
     alt_s: string;

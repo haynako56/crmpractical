@@ -79,11 +79,18 @@ class ReportController extends Controller
             }
         }
 
+        // Deposits are counted by the year they were taken (dep1_date/dep2_date), not the
+        // enquiry's original date, so a deposit shows up in the year it actually happened.
+        $depositsThisYear = (clone $base)->where(function ($query) use ($year) {
+            $query->where(fn ($q) => $q->where('status', '1st Deposit')->whereYear('dep1_date', $year))
+                ->orWhere(fn ($q) => $q->where('status', '2nd Deposit')->whereYear('dep2_date', $year));
+        })->count();
+
         // Year totals for summary stats
         $totals = [
             'total'    => (clone $yearBase)->count(),
             'meetings' => (clone $yearBase)->where('status', 'Meeting')->count(),
-            'deposits' => (clone $yearBase)->whereIn('status', ['1st Deposit', '2nd Deposit'])->count(),
+            'deposits' => $depositsThisYear,
             'lost'     => (clone $yearBase)->where('status', 'Lost')->count(),
         ];
 
@@ -189,7 +196,9 @@ class ReportController extends Controller
                     'rep'                   => $enquiry->rep ?? '',
                     'status'                => $enquiry->status,
                     'dep1'                  => $enquiry->dep1 ?? 'NO',
+                    'dep1_date'             => $enquiry->dep1_date?->format('Y-m-d'),
                     'dep2'                  => $enquiry->dep2 ?? 'NO',
+                    'dep2_date'             => $enquiry->dep2_date?->format('Y-m-d'),
                     'notes'                 => $enquiry->notes ?? '',
                     'design_name'           => $enquiry->design_name ?? '',
                     'alt_s'                 => $enquiry->alt_s ?? '',
@@ -302,8 +311,11 @@ class ReportController extends Controller
                 : 0,
         ])->values();
 
-        // Monthly status flow — always all time, grouped by year-month
-        $flowRaw = (clone $roleBase)->selectRaw('YEAR(date) as yr, MONTH(date) as mo, status, COUNT(*) as count')
+        // Monthly status flow — always all time, grouped by year-month.
+        // Deposit rows are bucketed by the month the deposit was taken (dep1_date/dep2_date),
+        // not the enquiry's original date, so they land in the month they actually happened.
+        $effectiveDate = "COALESCE(CASE WHEN status = '1st Deposit' THEN dep1_date WHEN status = '2nd Deposit' THEN dep2_date ELSE date END, date)";
+        $flowRaw = (clone $roleBase)->selectRaw("YEAR($effectiveDate) as yr, MONTH($effectiveDate) as mo, status, COUNT(*) as count")
             ->whereNotNull('date')
             ->groupBy('yr', 'mo', 'status')
             ->orderBy('yr')

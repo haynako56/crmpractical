@@ -28,7 +28,9 @@ class Enquiry extends Model
         'rep',
         'status',
         'dep1',
+        'dep1_date',
         'dep2',
+        'dep2_date',
         'notes',
         'design_name',
         'alt_s',
@@ -44,6 +46,8 @@ class Enquiry extends Model
 
     protected $casts = [
         'date'                    => 'date:Y-m-d',
+        'dep1_date'               => 'date:Y-m-d',
+        'dep2_date'               => 'date:Y-m-d',
         'first_contact_timestamp' => 'datetime',
         'files'                   => 'array',
         'join_email_list'         => 'boolean',
