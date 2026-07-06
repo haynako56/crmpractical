@@ -362,6 +362,9 @@ export default function DisplayHomesPage() {
 
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editForm, setEditForm] = useState<WalkInForm>(() => emptyForm(villages[0]?.name ?? 'Box Hill'));
+    const [editErrors, setEditErrors] = useState<Record<string, string>>({});
+    const [editHasEnquiry, setEditHasEnquiry] = useState(false);
+    const [editEnquiryName, setEditEnquiryName] = useState<string | null>(null);
     const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
     const visibleVillages = currentVillage === 'all' ? villages : villages.filter((v) => v.name === currentVillage);
@@ -417,6 +420,9 @@ export default function DisplayHomesPage() {
             create_enquiry: false,
             enquiry_name: '', enquiry_phone: '', enquiry_email: '', enquiry_type: '', enquiry_user_id: '',
         });
+        setEditHasEnquiry(row.enquiry !== null);
+        setEditEnquiryName(row.enquiry?.name ?? null);
+        setEditErrors({});
         setEditingId(row.id);
     }
 
@@ -424,15 +430,13 @@ export default function DisplayHomesPage() {
         if (editingId === null) return;
         setIsSubmittingEdit(true);
         router.patch(`/walk-ins/${editingId}`, {
-            village: editForm.village,
-            date: editForm.date,
-            visitors: editForm.visitors,
-            type: editForm.type,
+            ...editForm,
             user_id: editForm.user_id || null,
-            notes: editForm.notes,
+            enquiry_user_id: editForm.enquiry_user_id || null,
         }, {
             preserveScroll: true,
-            onSuccess: () => setEditingId(null),
+            onSuccess: () => { setEditingId(null); setEditErrors({}); },
+            onError: (errors) => setEditErrors(errors as Record<string, string>),
             onFinish: () => setIsSubmittingEdit(false),
         });
     }
@@ -677,15 +681,20 @@ export default function DisplayHomesPage() {
                             </button>
                         </div>
 
-                        <div className="max-h-[74vh] overflow-y-auto p-6">
+                        <div className="max-h-[74vh] space-y-4 overflow-y-auto p-6">
+                            {editHasEnquiry && (
+                                <div className="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-xs font-medium text-green-800">
+                                    <UserCheck size={13} /> Already linked to enquiry: {editEnquiryName}
+                                </div>
+                            )}
                             <WalkInFormFields
                                 form={editForm}
                                 setForm={setEditForm}
                                 users={users}
                                 villages={villages}
                                 visitorTypes={visitorTypes}
-                                showConvert={false}
-                                errors={{}}
+                                showConvert={!editHasEnquiry}
+                                errors={editErrors}
                             />
                         </div>
 

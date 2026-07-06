@@ -118,6 +118,54 @@ class WalkInControllerTest extends TestCase
         $this->assertSame(5, $walkIn->fresh()->visitors);
     }
 
+    public function test_editing_a_walk_in_can_create_a_linked_enquiry()
+    {
+        $sales = User::factory()->create();
+        $sales->assignRole('Sales');
+
+        $walkIn = WalkIn::create([
+            'village' => 'Leppington', 'date' => '2026-05-05', 'visitors' => 2, 'notes' => 'Original notes.',
+        ]);
+
+        $response = $this->actingAs($sales)->patch(route('walk-ins.update', $walkIn), [
+            'visitors'        => 2,
+            'create_enquiry'  => true,
+            'enquiry_name'    => 'Late Convert',
+        ]);
+
+        $response->assertRedirect();
+
+        $walkIn->refresh();
+        $enquiry = Enquiry::firstOrFail();
+
+        $this->assertSame($enquiry->id, $walkIn->enquiry_id);
+        $this->assertSame('Late Convert', $enquiry->name);
+        $this->assertSame('Display Home', $enquiry->source);
+        $this->assertStringContainsString('Leppington', $enquiry->notes);
+    }
+
+    public function test_editing_an_already_converted_walk_in_does_not_create_a_second_enquiry()
+    {
+        $sales = User::factory()->create();
+        $sales->assignRole('Sales');
+
+        $existingEnquiry = Enquiry::create([
+            'name' => 'Existing', 'date' => '2026-05-05', 'type' => 'H&L', 'source' => 'Display Home', 'lead' => 'Display Home',
+        ]);
+        $walkIn = WalkIn::create([
+            'village' => 'Leppington', 'date' => '2026-05-05', 'visitors' => 2, 'enquiry_id' => $existingEnquiry->id,
+        ]);
+
+        $response = $this->actingAs($sales)->patch(route('walk-ins.update', $walkIn), [
+            'create_enquiry' => true,
+            'enquiry_name'   => 'Should Not Be Created',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame(1, Enquiry::count());
+        $this->assertSame($existingEnquiry->id, $walkIn->fresh()->enquiry_id);
+    }
+
     public function test_sales_cannot_delete_a_walk_in()
     {
         $sales = User::factory()->create();
