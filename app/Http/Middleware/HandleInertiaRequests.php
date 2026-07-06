@@ -98,6 +98,7 @@ class HandleInertiaRequests extends Middleware
                 'user'         => $request->user(),
                 'isSuperAdmin' => $request->user()?->hasRole('Super Admin') ?? false,
                 'isAdmin'      => $request->user()?->hasRole('Admin') ?? false,
+                'isSales'      => $request->user()?->hasRole('Sales') ?? false,
             ],
             'alertCount'         => $request->user() ? $this->alertCount() : 0,
             'alertNotifications' => $request->user() ? $this->alertNotifications() : [],

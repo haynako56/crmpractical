@@ -383,6 +383,7 @@ export default function EnquiriesPage() {
     const { auth } = usePage<{ auth: Auth }>().props;
     const isSuperAdmin = auth.isSuperAdmin ?? false;
     const isAdmin      = auth.isAdmin ?? false;
+    const isSales      = auth.isSales ?? false;
 
     // Optimistic overrides sit on top of server data. Cleared automatically when
     // Inertia refreshes props (the server becomes the source of truth again).
@@ -502,7 +503,7 @@ export default function EnquiriesPage() {
             name: '', phone: '', email: '', loc: '',
             date: new Date().toISOString().slice(0, 10),
             type: TYPE_OPTIONS[0],
-            user_id: String(users[0]?.id ?? ''),
+            user_id: isSales ? String(auth.user.id) : String(users[0]?.id ?? ''),
             source: SOURCE_OPTIONS[0],
             lead:   LEAD_OPTIONS[0],
             notes: '',
@@ -730,7 +731,7 @@ export default function EnquiriesPage() {
                         >
                             <Download size={15} /> Export CSV
                         </button>
-                        {(isSuperAdmin || isAdmin) && (
+                        {(isSuperAdmin || isAdmin || isSales) && (
                             <button
                                 onClick={openAddNew}
                                 className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-800 hover:cursor-pointer"

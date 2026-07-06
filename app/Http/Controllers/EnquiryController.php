@@ -89,12 +89,6 @@ class EnquiryController extends Controller
 
     public function store(Request $request)
     {
-        
-        if (auth()->user()?->hasRole('Sales')) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => 'You are not allowed to create enquiries.']);
-            return redirect()->back();
-        }
-
         $validated = $request->validate([
             'name'    => ['required', 'string', 'max:255'],
             'phone'   => ['nullable', 'string', 'max:50'],
@@ -108,6 +102,10 @@ class EnquiryController extends Controller
             'lead'    => ['required', 'string', 'max:100'],
             'notes'   => ['nullable', 'string'],
         ]);
+
+        if (auth()->user()?->hasRole('Sales')) {
+            $validated['user_id'] = auth()->id();
+        }
 
         Enquiry::create(array_merge($validated, [
             'status'                  => 'New',
