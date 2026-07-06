@@ -52,7 +52,9 @@ class EnquiryController extends Controller
                 'rep'                   => $enquiry->rep ?? '',
                 'status'                => $enquiry->status,
                 'dep1'                  => $enquiry->dep1,
+                'dep1_date'             => $enquiry->dep1_date?->format('Y-m-d'),
                 'dep2'                  => $enquiry->dep2,
+                'dep2_date'             => $enquiry->dep2_date?->format('Y-m-d'),
                 'notes'                 => $enquiry->notes ?? '',
                 'design_name'           => $enquiry->design_name ?? '',
                 'alt_s'                 => $enquiry->alt_s ?? '',
@@ -149,7 +151,21 @@ class EnquiryController extends Controller
             $rules['user_id'] = ['sometimes', 'nullable', 'integer', 'exists:users,id'];
         }
 
-        $enquiry->update($request->validate($rules));
+        $validated = $request->validate($rules);
+
+        if (array_key_exists('dep1', $validated)) {
+            $validated['dep1_date'] = $validated['dep1'] === 'YES'
+                ? ($enquiry->dep1 === 'YES' ? $enquiry->dep1_date : now())
+                : null;
+        }
+
+        if (array_key_exists('dep2', $validated)) {
+            $validated['dep2_date'] = $validated['dep2'] === 'YES'
+                ? ($enquiry->dep2 === 'YES' ? $enquiry->dep2_date : now())
+                : null;
+        }
+
+        $enquiry->update($validated);
 
         if (($isSuperAdmin || $isAdmin) && $enquiry->user_id && $enquiry->user_id !== $previousUserId) {
             $token = Str::uuid()->toString();
