@@ -40,24 +40,7 @@ class WalkInController extends Controller
             ]);
 
             if ($createEnquiry) {
-                $enquiry = Enquiry::create([
-                    'name'                    => $validated['enquiry_name'],
-                    'phone'                   => $validated['enquiry_phone'] ?? null,
-                    'email'                   => $validated['enquiry_email'] ?? null,
-                    'date'                    => $walkIn->date,
-                    'type'                    => $validated['enquiry_type'] ?? 'H&L',
-                    'source'                  => 'Display Home',
-                    'lead'                    => 'Display Home',
-                    'notes'                   => "Walk-in at {$walkIn->village} Display Village on {$walkIn->date->format('d/m/Y')}."
-                        . (! empty($validated['notes']) ? ' Notes: ' . $validated['notes'] : ''),
-                    'user_id'                 => $validated['enquiry_user_id'] ?? $walkIn->user_id,
-                    'status'                  => 'New',
-                    'dep1'                    => 'NO',
-                    'dep2'                    => 'NO',
-                    'first_contact_timestamp' => now(),
-                ]);
-
-                $walkIn->update(['enquiry_id' => $enquiry->id]);
+                $this->createLinkedEnquiry($walkIn, $validated);
             }
 
             return $walkIn;
@@ -72,19 +55,58 @@ class WalkInController extends Controller
     public function update(Request $request, WalkIn $walkIn)
     {
         $validated = $request->validate([
-            'village'  => ['sometimes', 'string', 'in:' . implode(',', array_keys(WalkIn::VILLAGES))],
-            'date'     => ['sometimes', 'date'],
-            'visitors' => ['sometimes', 'integer', 'min:1', 'max:99'],
-            'type'     => ['sometimes', 'nullable', 'string', 'in:' . implode(',', WalkIn::VISITOR_TYPES)],
-            'user_id'  => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
-            'notes'    => ['sometimes', 'nullable', 'string'],
+            'village'         => ['sometimes', 'string', 'in:' . implode(',', array_keys(WalkIn::VILLAGES))],
+            'date'            => ['sometimes', 'date'],
+            'visitors'        => ['sometimes', 'integer', 'min:1', 'max:99'],
+            'type'            => ['sometimes', 'nullable', 'string', 'in:' . implode(',', WalkIn::VISITOR_TYPES)],
+            'user_id'         => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
+            'notes'           => ['sometimes', 'nullable', 'string'],
+            'create_enquiry'  => ['sometimes', 'boolean'],
+            'enquiry_name'    => ['required_if:create_enquiry,true', 'nullable', 'string', 'max:255'],
+            'enquiry_phone'   => ['nullable', 'string', 'max:50'],
+            'enquiry_email'   => ['nullable', 'string', 'max:255'],
+            'enquiry_type'    => ['nullable', 'string', 'max:100'],
+            'enquiry_user_id' => ['nullable', 'integer', 'exists:users,id'],
         ]);
 
-        $walkIn->update($validated);
+        $createEnquiry = (bool) ($validated['create_enquiry'] ?? false) && ! $walkIn->enquiry_id;
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Walk-in updated.']);
+        DB::transaction(function () use ($walkIn, $validated, $createEnquiry) {
+            $walkIn->update(collect($validated)->except([
+                'create_enquiry', 'enquiry_name', 'enquiry_phone', 'enquiry_email', 'enquiry_type', 'enquiry_user_id',
+            ])->all());
+
+            if ($createEnquiry) {
+                $this->createLinkedEnquiry($walkIn, $validated);
+            }
+        });
+
+        $message = $createEnquiry ? 'Walk-in updated and enquiry created.' : 'Walk-in updated.';
+        Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
         return redirect()->back();
+    }
+
+    private function createLinkedEnquiry(WalkIn $walkIn, array $validated): void
+    {
+        $enquiry = Enquiry::create([
+            'name'                    => $validated['enquiry_name'],
+            'phone'                   => $validated['enquiry_phone'] ?? null,
+            'email'                   => $validated['enquiry_email'] ?? null,
+            'date'                    => $walkIn->date,
+            'type'                    => $validated['enquiry_type'] ?? 'H&L',
+            'source'                  => 'Display Home',
+            'lead'                    => 'Display Home',
+            'notes'                   => "Walk-in at {$walkIn->village} Display Village on {$walkIn->date->format('d/m/Y')}."
+                . (! empty($walkIn->notes) ? ' Notes: ' . $walkIn->notes : ''),
+            'user_id'                 => $validated['enquiry_user_id'] ?? $walkIn->user_id,
+            'status'                  => 'New',
+            'dep1'                    => 'NO',
+            'dep2'                    => 'NO',
+            'first_contact_timestamp' => now(),
+        ]);
+
+        $walkIn->update(['enquiry_id' => $enquiry->id]);
     }
 
     public function destroy(WalkIn $walkIn)
