@@ -18,6 +18,7 @@ export type Auth = {
     user: User;
     isSuperAdmin: boolean;
     isAdmin: boolean;
+    isSales: boolean;
 };
 
 /* @chisel-passkeys */
