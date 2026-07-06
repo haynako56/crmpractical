@@ -62,4 +62,30 @@ class EnquiryControllerTest extends TestCase
         $enquiry = Enquiry::firstOrFail();
         $this->assertSame($rep->id, $enquiry->user_id);
     }
+
+    public function test_deleting_an_enquiry_soft_deletes_it()
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $enquiry = Enquiry::create($this->validEnquiryPayload(['contactform7_id' => 'cf7-123']));
+
+        $response = $this->actingAs($admin)->delete(route('enquiries.destroy', $enquiry));
+
+        $response->assertRedirect();
+        $this->assertSoftDeleted($enquiry);
+        $this->assertDatabaseHas('enquiries', ['id' => $enquiry->id, 'contactform7_id' => 'cf7-123']);
+    }
+
+    public function test_soft_deleted_enquiry_is_hidden_from_the_index()
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+
+        $enquiry = Enquiry::create($this->validEnquiryPayload());
+        $enquiry->delete();
+
+        $this->assertCount(0, Enquiry::all());
+        $this->assertCount(1, Enquiry::withTrashed()->get());
+    }
 }

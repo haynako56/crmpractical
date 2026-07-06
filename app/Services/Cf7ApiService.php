@@ -35,7 +35,7 @@ class Cf7ApiService
             foreach ($body['submissions'] ?? [] as $submission) {
                 $contactformId = (string) $submission['id'];
 
-                if (Enquiry::where('contactform7_id', $contactformId)->exists()) {
+                if (Enquiry::withTrashed()->where('contactform7_id', $contactformId)->exists()) {
                     $skippedCount++;
                     continue;
                 }
