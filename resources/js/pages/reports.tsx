@@ -15,16 +15,18 @@ import { getUserColor } from '@/lib/user-colors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface MonthlyRow   { month: string; count: number }
+interface DailyRow     { day: number;   count: number }
 interface TypeRow      { type: string;  count: number }
 interface SourceRow    { source: string; count: number }
 interface RepRow       { name: string;  count: number; color: number }
+interface MonthOption  { value: string;  label: string }
 interface Totals       { total: number; meetings: number; deposits: number; lost: number }
 
 interface PageProps extends Record<string, unknown> {
-    year: number;
-    availableYears: number[];
-    monthlyData: MonthlyRow[];
+    selectedMonth: string;
+    monthLabel: string;
+    availableMonths: MonthOption[];
+    dailyData: DailyRow[];
     typeData: TypeRow[];
     sourceData: SourceRow[];
     repData: RepRow[];
@@ -93,11 +95,11 @@ function SimpleTooltip({ active, payload, label }: { active?: boolean; payload?:
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
-    const { year, availableYears, monthlyData, typeData, sourceData, repData, totals } =
+    const { selectedMonth, monthLabel, availableMonths, dailyData, typeData, sourceData, repData, totals } =
         usePage<PageProps>().props;
 
-    function changeYear(newYear: string) {
-        router.get('/reports', { year: newYear }, { preserveState: false });
+    function changeMonth(newMonth: string) {
+        router.get('/reports', { month: newMonth }, { preserveState: false });
     }
 
     // Rep bar colors — use stored color for known reps, gray for unassigned
@@ -106,7 +108,7 @@ export default function ReportsPage() {
         return getUserColor(rep.color).accent;
     }
 
-    const maxMonthly = Math.max(...monthlyData.map((d) => d.count), 1);
+    const maxDaily = Math.max(...dailyData.map((row) => row.count), 1);
 
     return (
         <>
@@ -118,34 +120,34 @@ export default function ReportsPage() {
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-semibold text-gray-900">Reports</h1>
-                        <p className="mt-0.5 text-sm text-gray-500">Enquiry analytics · {year}</p>
+                        <p className="mt-0.5 text-sm text-gray-500">Enquiry analytics · {monthLabel}</p>
                     </div>
                     <select
-                        value={year}
-                        onChange={(e) => changeYear(e.target.value)}
+                        value={selectedMonth}
+                        onChange={(event) => changeMonth(event.target.value)}
                         className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-600 focus:outline-none"
                     >
-                        {availableYears.map((yr) => (
-                            <option key={yr} value={yr}>{yr}</option>
+                        {availableMonths.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                     </select>
                 </div>
 
                 {/* ── Summary stats ──────────────────────────────────────── */}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <StatCard label={`Total enquiries (${year})`} value={totals.total}    accent="#1a3a5c" />
+                    <StatCard label={`Total enquiries (${monthLabel})`} value={totals.total}    accent="#1a3a5c" />
                     <StatCard label="Meetings"                     value={totals.meetings} accent="#6d28d9" />
                     <StatCard label="Deposits taken"               value={totals.deposits} accent="#15803d" />
                     <StatCard label="Lost"                         value={totals.lost}     accent="#b91c1c" />
                 </div>
 
-                {/* ── Monthly enquiries (full width) ─────────────────────── */}
+                {/* ── Daily enquiries (full width) ───────────────────────── */}
                 <CardWrap>
-                    <CardTitle title="Monthly enquiries" sub={`New enquiries each month in ${year}`} />
+                    <CardTitle title="Daily enquiries" sub={`New enquiries each day in ${monthLabel}`} />
                     <ResponsiveContainer width="100%" height={280}>
-                        <BarChart data={monthlyData} barCategoryGap="35%">
+                        <BarChart data={dailyData} barCategoryGap="20%">
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                            <XAxis dataKey="month" tick={AXIS_TICK} axisLine={false} tickLine={false} />
+                            <XAxis dataKey="day" tick={AXIS_TICK} axisLine={false} tickLine={false} />
                             <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
                             <Tooltip content={<SimpleTooltip />} cursor={{ fill: '#f8fafc' }} />
                             <Bar dataKey="count" name="Enquiries" fill="#1a3a5c" radius={[4, 4, 0, 0]} maxBarSize={56} />
@@ -160,7 +162,7 @@ export default function ReportsPage() {
                     <CardWrap>
                         <CardTitle title="Enquiries by type" sub="Breakdown by product interest" />
                         {typeData.length === 0 ? (
-                            <div className="flex h-52 items-center justify-center text-sm text-gray-400">No data for {year}</div>
+                            <div className="flex h-52 items-center justify-center text-sm text-gray-400">No data for {monthLabel}</div>
                         ) : (
                             <ResponsiveContainer width="100%" height={260}>
                                 <PieChart>
@@ -189,29 +191,29 @@ export default function ReportsPage() {
                         )}
                     </CardWrap>
 
-                    {/* Monthly breakdown table */}
+                    {/* Daily breakdown table */}
                     <CardWrap>
-                        <CardTitle title="Monthly breakdown" sub={`Enquiry count per month in ${year}`} />
-                        <div className="overflow-hidden rounded-lg border border-gray-100">
+                        <CardTitle title="Daily breakdown" sub={`Enquiry count per day in ${monthLabel}`} />
+                        <div className="max-h-[420px] overflow-y-auto overflow-x-hidden rounded-lg border border-gray-100">
                             <table className="w-full border-collapse text-sm">
                                 <thead>
                                     <tr className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                        <th className="px-4 py-2.5 text-left">Month</th>
+                                        <th className="px-4 py-2.5 text-left">Day</th>
                                         <th className="px-4 py-2.5 text-right">Count</th>
                                         <th className="px-4 py-2.5">Share</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {monthlyData.map((row) => (
-                                        <tr key={row.month} className="border-t border-gray-100 hover:bg-gray-50">
-                                            <td className="px-4 py-2 text-gray-700">{row.month} {year}</td>
+                                    {dailyData.map((row) => (
+                                        <tr key={row.day} className="border-t border-gray-100 hover:bg-gray-50">
+                                            <td className="px-4 py-2 text-gray-700">{row.day} {monthLabel}</td>
                                             <td className="px-4 py-2 text-right font-semibold text-gray-900">{row.count}</td>
                                             <td className="px-4 py-2">
                                                 <div className="flex items-center gap-2">
                                                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
                                                         <div
                                                             className="h-full rounded-full bg-blue-800"
-                                                            style={{ width: `${Math.round((row.count / maxMonthly) * 100)}%` }}
+                                                            style={{ width: `${Math.round((row.count / maxDaily) * 100)}%` }}
                                                         />
                                                     </div>
                                                     <span className="w-8 text-right text-xs text-gray-500">{row.count}</span>
@@ -235,7 +237,7 @@ export default function ReportsPage() {
 
                     {/* Rep performance */}
                     <CardWrap>
-                        <CardTitle title="Rep performance" sub={`Enquiries assigned per rep in ${year}`} />
+                        <CardTitle title="Rep performance" sub={`Enquiries assigned per rep in ${monthLabel}`} />
                         {repData.length === 0 ? (
                             <div className="flex h-52 items-center justify-center text-sm text-gray-400">No data</div>
                         ) : (
@@ -260,9 +262,9 @@ export default function ReportsPage() {
 
                     {/* Lead source */}
                     <CardWrap>
-                        <CardTitle title="Lead source analysis" sub={`Which channels drive the most leads in ${year}`} />
+                        <CardTitle title="Lead source analysis" sub={`Which channels drive the most leads in ${monthLabel}`} />
                         {sourceData.length === 0 ? (
-                            <div className="flex h-52 items-center justify-center text-sm text-gray-400">No data for {year}</div>
+                            <div className="flex h-52 items-center justify-center text-sm text-gray-400">No data for {monthLabel}</div>
                         ) : (
                             <ResponsiveContainer width="100%" height={Math.max(180, sourceData.length * 36)}>
                                 <BarChart data={sourceData.map((item, idx) => ({ ...item, fill: CHART_COLORS[idx % CHART_COLORS.length] }))} layout="vertical" barCategoryGap="30%">

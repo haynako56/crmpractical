@@ -23,29 +23,43 @@ class ReportController extends Controller
             $base->where('user_id', $userId);
         }
 
-        $availableYears = (clone $base)->selectRaw('YEAR(date) as year')
+        // Build the list of year-month combos that actually have enquiries
+        $availableMonths = (clone $base)->selectRaw('YEAR(date) as yr, MONTH(date) as mo')
             ->whereNotNull('date')
-            ->groupBy('year')
-            ->orderByDesc('year')
-            ->pluck('year')
-            ->toArray();
+            ->groupBy('yr', 'mo')
+            ->orderByDesc('yr')
+            ->orderByDesc('mo')
+            ->get()
+            ->map(fn ($row) => [
+                'value' => $row->yr . '-' . str_pad($row->mo, 2, '0', STR_PAD_LEFT),
+                'label' => self::MONTHS[(int) $row->mo - 1] . ' ' . $row->yr,
+            ])
+            ->values();
 
-        $year = (int) $request->get('year', $availableYears[0] ?? date('Y'));
+        $selectedMonth = (string) $request->get('month', $availableMonths[0]['value'] ?? date('Y-m'));
+        if (! preg_match('/^\d{4}-\d{2}$/', $selectedMonth)) {
+            $selectedMonth = date('Y-m');
+        }
+        [$year, $month] = array_map('intval', explode('-', $selectedMonth));
 
-        $yearBase = (clone $base)->whereYear('date', $year);
+        $monthLabel = self::MONTHS[$month - 1] . ' ' . $year;
 
-        // Monthly enquiry counts (all 12 months, filling 0 where no data)
-        $monthlyCounts = (clone $yearBase)->selectRaw('MONTH(date) as month, COUNT(*) as count')
-            ->groupBy('month')
-            ->pluck('count', 'month');
+        $monthBase = (clone $base)->whereYear('date', $year)->whereMonth('date', $month);
 
-        $monthlyData = collect(range(1, 12))->map(fn ($m) => [
-            'month' => self::MONTHS[$m - 1],
-            'count' => (int) $monthlyCounts->get($m, 0),
+        // Daily enquiry counts (all days of the month, filling 0 where no data)
+        $daysInMonth = (int) date('t', mktime(0, 0, 0, $month, 1, $year));
+
+        $dailyCounts = (clone $monthBase)->selectRaw('DAY(date) as day, COUNT(*) as count')
+            ->groupBy('day')
+            ->pluck('count', 'day');
+
+        $dailyData = collect(range(1, $daysInMonth))->map(fn ($day) => [
+            'day'   => $day,
+            'count' => (int) $dailyCounts->get($day, 0),
         ])->values();
 
         // Type breakdown
-        $typeData = (clone $yearBase)->selectRaw('type, COUNT(*) as count')
+        $typeData = (clone $monthBase)->selectRaw('type, COUNT(*) as count')
             ->whereNotNull('type')
             ->where('type', '!=', '')
             ->groupBy('type')
@@ -54,7 +68,7 @@ class ReportController extends Controller
             ->map(fn ($row) => ['type' => $row->type, 'count' => (int) $row->count]);
 
         // Lead source breakdown (using `source` column)
-        $sourceData = (clone $yearBase)->selectRaw('source, COUNT(*) as count')
+        $sourceData = (clone $monthBase)->selectRaw('source, COUNT(*) as count')
             ->whereNotNull('source')
             ->where('source', '!=', '')
             ->groupBy('source')
@@ -62,46 +76,48 @@ class ReportController extends Controller
             ->get()
             ->map(fn ($row) => ['source' => $row->source, 'count' => (int) $row->count]);
 
-        // Rep performance (users with enquiry counts for this year)
+        // Rep performance (users with enquiry counts for this month)
         $repData = User::withCount([
-            'enquiries as count' => fn ($q) => $q->whereYear('date', $year)->when($isSales, fn ($q) => $q->where('enquiries.user_id', $userId)),
+            'enquiries as count' => fn ($query) => $query->whereYear('date', $year)->whereMonth('date', $month)
+                ->when($isSales, fn ($salesQuery) => $salesQuery->where('enquiries.user_id', $userId)),
         ])->orderBy('name')->get()->map(fn (User $user) => [
             'name'  => $user->name,
             'count' => (int) $user->count,
             'color' => $user->color ?? 0,
         ]);
 
-        // Unassigned count for the year (Sales sees none, they only see assigned)
+        // Unassigned count for the month (Sales sees none, they only see assigned)
         if (! $isSales) {
-            $unassignedCount = (clone $yearBase)->whereNull('user_id')->count();
+            $unassignedCount = (clone $monthBase)->whereNull('user_id')->count();
             if ($unassignedCount > 0) {
                 $repData->push(['name' => 'Unassigned', 'count' => $unassignedCount, 'color' => -1]);
             }
         }
 
-        // Deposits are counted by the year they were taken (dep1_date/dep2_date), not the
-        // enquiry's original date, so a deposit shows up in the year it actually happened.
-        $depositsThisYear = (clone $base)->where(function ($query) use ($year) {
-            $query->where(fn ($q) => $q->where('status', '1st Deposit')->whereYear('dep1_date', $year))
-                ->orWhere(fn ($q) => $q->where('status', '2nd Deposit')->whereYear('dep2_date', $year));
+        // Deposits are counted by the month they were taken (dep1_date/dep2_date), not the
+        // enquiry's original date, so a deposit shows up in the month it actually happened.
+        $depositsThisMonth = (clone $base)->where(function ($query) use ($year, $month) {
+            $query->where(fn ($firstDeposit) => $firstDeposit->where('status', '1st Deposit')->whereYear('dep1_date', $year)->whereMonth('dep1_date', $month))
+                ->orWhere(fn ($secondDeposit) => $secondDeposit->where('status', '2nd Deposit')->whereYear('dep2_date', $year)->whereMonth('dep2_date', $month));
         })->count();
 
-        // Year totals for summary stats
+        // Month totals for summary stats
         $totals = [
-            'total'    => (clone $yearBase)->count(),
-            'meetings' => (clone $yearBase)->where('status', 'Meeting')->count(),
-            'deposits' => $depositsThisYear,
-            'lost'     => (clone $yearBase)->where('status', 'Lost')->count(),
+            'total'    => (clone $monthBase)->count(),
+            'meetings' => (clone $monthBase)->where('status', 'Meeting')->count(),
+            'deposits' => $depositsThisMonth,
+            'lost'     => (clone $monthBase)->where('status', 'Lost')->count(),
         ];
 
         return Inertia::render('reports', [
-            'year'           => $year,
-            'availableYears' => $availableYears,
-            'monthlyData'    => $monthlyData,
-            'typeData'       => $typeData,
-            'sourceData'     => $sourceData,
-            'repData'        => $repData->values(),
-            'totals'         => $totals,
+            'selectedMonth'   => $selectedMonth,
+            'monthLabel'      => $monthLabel,
+            'availableMonths' => $availableMonths,
+            'dailyData'       => $dailyData,
+            'typeData'        => $typeData,
+            'sourceData'      => $sourceData,
+            'repData'         => $repData->values(),
+            'totals'          => $totals,
         ]);
     }
 
