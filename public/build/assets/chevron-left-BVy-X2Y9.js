@@ -1,0 +1,1 @@
+import{M as e}from"./app-DEX5IF-j.js";var t=e(`ChevronLeft`,[[`path`,{d:`m15 18-6-6 6-6`,key:`1wnfg3`}]]);export{t};
